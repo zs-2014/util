@@ -68,8 +68,10 @@ int base64decode(const char *src, void *dst)
 {
     if(src == NULL)
         return -1 ;
-    if(strlen(src) == 0)
+    int len = strlen(src) ;
+    if(len == 0)
         return 0 ;
+    memset(dst, 0, (len>>2)*3) ;
     uchar *dst_uchar = (uchar *)dst ;
     int left_bits = 8 ;
     while(*src != '\0')
@@ -172,7 +174,7 @@ int main(int argc, char *argv[])
     char dst[1024] = {0} ;
     int n = base64encode((uchar*)argv[1], strlen(argv[1]), dst) ;
     printf("encode:%s\n", dst) ;
-    char src1[1024] = {0} ;
+    char src1[1024] = {1, 2, 3, 4} ;
     int n1 = base64decode(dst, src1) ;
     int i = 0 ; 
     printf("decode:\n");
