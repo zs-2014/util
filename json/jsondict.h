@@ -32,9 +32,12 @@ typedef struct JsonDictFunc
 	JsonDict* (*malloc) (size_t sz) ;		
 	void (*free) (JsonDict *json_dict) ;
     int (*hash)(const JsonDict *json_dict, const JsonString *key) ;
+
 	int (*is_exist) (const JsonDict *json_dict, const struct JsonString *key) ;
+
 	struct JsonObject* (*set) (JsonDict *json_dict, struct JsonString *key, struct JsonObject *value) ;
 	struct JsonObject* (*get) (const JsonDict *json_dict, const struct JsonString *key) ;
+
 }JsonDictFunc;
 
 #ifdef __cplusplus

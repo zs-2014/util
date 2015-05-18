@@ -8,6 +8,7 @@
 #include "jsonarray.h"
 #include "jsonreader.h"
 
+
 extern JsonObjectFunc json_object_func ;
 extern JsonStringFunc json_string_func ;
 extern JsonDictFunc   json_dict_func ;
@@ -346,6 +347,41 @@ static JsonObject *parse_value(JsonReader *json_reader)
     return nullptr ;
 }
 
+static int is_int64_over_flow(char *number)
+{
+    //9223372036854775807 == INT64_MAX
+    //9223372036854775808 == INT64_MIN
+    char *str[] = {"9223372036854775807", "9223372036854775808"} ;
+    char *tmp = str[0] ;
+
+    if(number[0] == '-')  
+    {   
+        number++;
+        tmp = str[1] ;
+    }
+
+    while(*number == '0')
+        number++ ;
+
+    int len1 = strlen(tmp) ;
+    int len2 = strlen(number) ;
+
+    if(len1 < len2)
+        return 1 ;
+    else if(len1 > len2)
+        return 0 ;
+
+    while(*tmp != '\0' && *number != '\0')
+    {
+        if(tmp[0] < number[0])
+            return 1 ;
+        tmp++ ;
+        number++ ;
+    }
+    return 0 ;
+}
+
+
 static JsonObject *parse_number_object(JsonReader *json_reader)
 {
     //is_number_object保证最起码有一个数字存在
@@ -396,6 +432,14 @@ static JsonObject *parse_number_object(JsonReader *json_reader)
                     "illegal number at position %d", json_reader ->curr_pos + (endptr-number)) ; 
             json_object_func.free(json_object) ;
             return nullptr ;
+        }
+        //判断数据是否溢出
+        if(is_int64_over_flow(number))
+        {
+            if(number[0] != '-') 
+                v = strtoll("9223372036854775807", nullptr, 10) ; 
+            else
+                v = strtoll("-9223372036854775808", nullptr, 10) ;
         }
         json_object ->type = INTEGER_OBJECT_TYPE ;
         json_object ->object.i = v;
@@ -626,7 +670,7 @@ static JsonObject *parse_dict_object(JsonReader *json_reader)
         else
         {
             snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff),
-                     "expected '{' at position %d", json_reader ->curr_pos) ; 
+                     "expected '}' at position %d", json_reader ->curr_pos) ; 
         }
         json_dict_func.free(json_dict) ;
         return nullptr ;
@@ -671,24 +715,36 @@ JsonObject *parse(char *buff, size_t sz)
 
 int main(int argc, char *argv[])
 {
-    if(argc != 2 )
+    if(argc < 2 )
     {
         printf("请输入测试参数\n") ;
         return -1 ;
     }
     char *dict_str = "{\"test\": 1, \"test1\": \"2\\t\", \"test\": {\"test1\": 1, \"test2\": true}, \"test4\": [null, true, false, 1, \"xxx\", {\"test5:\": 1}]}" ;
     dict_str = argv[1] ;
-    printf("your input is:[%s]\n", argv[1]) ;
-    JsonObject *json_object = parse(dict_str, strlen(dict_str)) ;
-    if(!json_object)
+    int count = atoi(argv[2]) ;
+    int i = 0 ;
+    struct timeval t1 ;
+    struct timeval t2 ;
+    gettimeofday(&t1) ;
+    printf("your input is:[%s]\ncount = %d\n", argv[1], count) ;
+    for(i=0; i < count; i++)
     {
-       printf("--%s-- is invalid json string\n", dict_str) ;  
+        JsonObject *json_object = parse(dict_str, strlen(dict_str)) ;
+        if(!json_object)
+        {
+            printf("--%s-- is invalid json string\n", dict_str) ;  
+            break ;
+        }
+        else
+        {
+            //printf("--%s-- is a valid json string\n", dict_str) ;    
+            print_json_object(json_object, 0) ;
+            json_object_func.free(json_object) ;
+        }
     }
-    else
-    {
-        printf("--%s-- is a valid json string\n", dict_str) ;    
-        print_json_object(json_object, 0) ;
-    }
-    json_object_func.free(json_object) ;
+    gettimeofday(&t2, NULL) ;
+    int64_t diff = (t2.tv_sec*1000000 + t2.tv_usec - t1.tv_sec*1000000 - t1.tv_usec)/1000;
+    printf("timediff = %ld ms", diff) ;
     return 0 ;
 }

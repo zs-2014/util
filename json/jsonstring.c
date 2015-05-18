@@ -85,7 +85,7 @@ static int hash(const JsonString *json_string)
     int i = 0 ;
     for(i=0; i < json_string ->use_sz; i++)
     {
-        v = (v << 5) + v + json_string ->buff[i] ;
+        v = (v << 5) + json_string ->buff[i] ;
     }
     return (int)v;
 }
