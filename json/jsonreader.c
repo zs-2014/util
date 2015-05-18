@@ -182,7 +182,11 @@ static JsonString *copy_key(JsonReader *json_reader)
             {
                 char tmp[32] = {0} ;
                 if(!convert_unicode_str_to_utf8(json_reader, tmp))
+                {
+                    snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff),
+                             "illegal unicode string at position %d", json_reader ->curr_pos) ;
                     goto __fails ;
+                }
                 if(!json_string_func.append_string(json_string, tmp, strlen(tmp)))
                     goto __fails ;
                 continue ;
@@ -191,7 +195,11 @@ static JsonString *copy_key(JsonReader *json_reader)
             {
                 ch = escape(json_reader) ;
                 if(ch == -1)
+                {
+                    snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff),
+                             "unknown escape char at position %d", json_reader ->curr_pos) ; 
                     goto __fails ;
+                }
             }
         }
         if(!json_string_func.append_char(json_string, ch))
@@ -199,7 +207,11 @@ static JsonString *copy_key(JsonReader *json_reader)
     }
 
     if(!is_valid(json_reader)) 
+    {
+        snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff),
+                 "expected \" at position %d", json_reader ->curr_pos) ;
         goto __fails ;
+    }
     //skip "
     json_reader ->curr_pos++ ;
     //skip \t \n \r
@@ -326,6 +338,11 @@ static JsonObject *parse_value(JsonReader *json_reader)
     {
         return parse_array_object(json_reader) ;
     }
+    if(is_valid(json_reader))
+    {
+        snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff), 
+                "unknown value type at position %d", json_reader ->curr_pos) ;
+    }
     return nullptr ;
 }
 
@@ -360,6 +377,8 @@ static JsonObject *parse_number_object(JsonReader *json_reader)
         double v = strtod(number, &endptr) ;
         if(endptr != number + i)
         {
+            snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff), 
+                    "illegal number at position %d", json_reader ->curr_pos + (endptr-number)) ; 
             json_object_func.free(json_object) ;
             return nullptr ;
         }
@@ -373,6 +392,8 @@ static JsonObject *parse_number_object(JsonReader *json_reader)
         int64_t v = (int64_t)strtoll(number, &endptr, 10) ;
         if(endptr != number + i)
         {
+            snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff), 
+                    "illegal number at position %d", json_reader ->curr_pos + (endptr-number)) ; 
             json_object_func.free(json_object) ;
             return nullptr ;
         }
@@ -404,7 +425,11 @@ static JsonObject *parse_array_object(JsonReader *json_reader)
     while(is_valid(json_reader) && !is_array_object_end(json_reader))
     {
         if(has_comma == 0)
+        {
+            snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff),
+                     "expected ',' at position %d", json_reader ->curr_pos) ;
             goto __fails ;
+        }
         v = parse_value(json_reader) ;
         if(!v)
             goto __fails;
@@ -423,9 +448,21 @@ static JsonObject *parse_array_object(JsonReader *json_reader)
             goto __fails ;
         v = nullptr ;
     }
-
+    
     if(!is_array_object_end(json_reader) || has_comma == 1)
+    {
+        if(has_comma == 1)
+        {
+            snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff),
+                    "unexpected ',' near position %d", json_reader ->curr_pos) ;
+        }
+        else
+        {
+            snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff),
+                    "expected ']' at positin:%d", json_reader ->curr_pos) ;
+        }
         goto __fails ;
+    }
     json_object ->object.object = json_ay ;
     //skip ]
     json_reader ->curr_pos++ ;
@@ -526,11 +563,19 @@ static JsonObject *parse_dict_object(JsonReader *json_reader)
     {
         //find the key start token '"'
         if(!is_key_start(json_reader))
+        {
+            snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff),
+                     "expected a \" at position %d", json_reader ->curr_pos) ;
             goto __fails;
+        }
         //skip '"'
         json_reader ->curr_pos++ ;
         if(!has_comma)
+        {
+            snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff),
+                     "expected a ',' at position %d", json_reader ->curr_pos) ;
             goto __fails ;
+        }
         //拷贝key
         key = copy_key(json_reader) ;
         if(!key)
@@ -539,7 +584,11 @@ static JsonObject *parse_dict_object(JsonReader *json_reader)
             goto __fails ;
         //找到 ':'
         if(json_reader ->buff[json_reader ->curr_pos] != ':')
+        {
+            snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff),
+                     "expected a ':' at position %d", json_reader ->curr_pos) ;
             goto __fails ;
+        }
 
         //跳过 ':'
         json_reader ->curr_pos++ ;
@@ -567,8 +616,18 @@ static JsonObject *parse_dict_object(JsonReader *json_reader)
     }
 
     //最后一对key-value不能再跟着一个 ','
-    if(!is_dict_object_end(json_reader) || has_comma == 1)
+    if(!is_valid(json_reader) || has_comma == 1)
     {
+        if(has_comma == 1)
+        {
+            snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff),
+                    "unexpected ',' near position %d", json_reader ->curr_pos) ; 
+        }
+        else
+        {
+            snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff),
+                     "expected '{' at position %d", json_reader ->curr_pos) ; 
+        }
         json_dict_func.free(json_dict) ;
         return nullptr ;
     }
@@ -601,8 +660,9 @@ JsonObject *parse(char *buff, size_t sz)
     JsonObject *json_object = nullptr ;
     json_object = parse_value(&json_reader) ;
     skip_spaces(&json_reader) ;
-    if(is_valid(&json_reader))
+    if(is_valid(&json_reader) || !json_object)
     {
+        printf("errmsg[%s]\n", json_reader.errbuff) ;
         json_object_func.free(json_object) ;
         return nullptr ;
     }
