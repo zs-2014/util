@@ -22,24 +22,28 @@ struct JsonStringFunc
 static int get_grow_size(const JsonString *json_string, size_t need_sz) ;
 static int ensure_memory(JsonString *json_string, size_t need_sz) ;
 static void free_json_string(JsonString *json_string) ;
+static void deconstruct_json_string(JsonString *json_string) ;
+static int init_json_string(JsonString *json_string, size_t sz) ; 
 static JsonString *malloc_json_string(size_t sz) ;
 static int append_char_to_json_string(JsonString *json_string, char ch) ;
 static int append_string_to_json_string(JsonString *json_string, const char *str, size_t sz) ;
-static int hash(const JsonString *json_string) ;
+static unsigned hash(const JsonString *json_string) ;
 static int len(const JsonString *json_string) ;
 static int cmp(const JsonString *json_string1, const JsonString *json_string2) ;
 static char at(const JsonString *json_string, int idx) ;
 
 JsonStringFunc json_string_func = { .get_grow_size = get_grow_size,
-                               .hash = hash,
-                               .at = at, 
-                               .len = len,
-                               .cmp = cmp, 
-                               .ensure_memory = ensure_memory,
-                               .append_char = append_char_to_json_string,
-                               .append_string = append_string_to_json_string,
-                               .malloc = malloc_json_string,
-                               .free = free_json_string} ;
+                                    .hash = hash,
+                                    .at = at, 
+                                    .len = len,
+                                    .cmp = cmp, 
+                                    .ensure_memory = ensure_memory,
+                                    .append_char = append_char_to_json_string,
+                                    .append_string = append_string_to_json_string,
+                                    .malloc = malloc_json_string,
+                                    .init = init_json_string,
+                                    .free = free_json_string,
+                                    .deconstruct = deconstruct_json_string} ;
 
 JsonStringFunc *get_json_string_func()
 {
@@ -50,20 +54,21 @@ static char at(const JsonString *json_string, int idx)
 {
     return json_string ->buff[idx] ;
 }
+
 static int cmp(const JsonString *json_string1, const JsonString *json_string2)
 {
     if(!json_string1 || !json_string2)    
         return -1 ;
     int sz1 = json_string1 ->use_sz ;
     int sz2 = json_string2 ->use_sz ;
-    while(--sz1 >= 0 && --sz2 >= 0)
+    while(sz1 > 0 && sz2 > 0)
     {
-        if(json_string1 ->buff[sz1] != json_string2 ->buff[sz2])
+        if(json_string1 ->buff[--sz1] != json_string2 ->buff[--sz2])
             return json_string1 ->buff[sz1] - json_string2 ->buff[sz2] > 0 ? 1 : -1 ;
     }
-    if(sz1 >= 0)
+    if(sz1 > 0)
         return 1 ;  
-    else if(sz2 >= 0)
+    else if(sz2 > 0)
         return -1 ;
     else
         return 0 ;
@@ -76,10 +81,11 @@ static int len(const JsonString *json_string)
     return json_string ->use_sz ;
 }
 
-static int hash(const JsonString *json_string)
+static unsigned hash(const JsonString *json_string)
 {
+
     if(!json_string)
-        return -1 ;
+        return -1;
 
     unsigned v = 0 ;
     int i = 0 ;
@@ -87,7 +93,7 @@ static int hash(const JsonString *json_string)
     {
         v = (v << 5) + json_string ->buff[i] ;
     }
-    return (int)v;
+    return v;
 }
 
 static int get_grow_size(const JsonString *json_string, size_t need_sz)
@@ -118,7 +124,19 @@ static int ensure_memory(JsonString *json_string, size_t need_sz)
     return 1 ;
 }
 
-static void free_json_string(JsonString *json_string)
+static int init_json_string(JsonString *json_string, size_t sz)
+{
+    if(!json_string)
+        return 0 ;
+    json_string ->buff = nullptr ;
+    json_string ->use_sz = 0 ;
+    json_string ->total_sz = 0 ;
+    if(!ensure_memory(json_string, sz))
+        return 0 ;
+    return 1 ;
+}
+
+static void deconstruct_json_string(JsonString *json_string)
 {
     if(!json_string)
         return ;
@@ -127,6 +145,11 @@ static void free_json_string(JsonString *json_string)
     json_string ->buff = nullptr ;
     json_string ->total_sz = 0 ;
     json_string ->use_sz = 0 ;
+}
+
+static void free_json_string(JsonString *json_string)
+{
+    json_string_func.deconstruct(json_string) ;
     free(json_string) ;
     json_string = nullptr ;
 }

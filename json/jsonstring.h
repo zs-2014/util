@@ -16,14 +16,16 @@ typedef struct JsonStringFunc
 {
     char (*at)(const JsonString *json_string, int idx) ;
     int (*len) (const JsonString *json_string) ;
-    int (*hash) (const JsonString *json_string) ;
+    unsigned (*hash) (const JsonString *json_string) ;
     int (*cmp) (const JsonString *json_string1, const JsonString *json_string2) ;
 	int (*get_grow_size) (const JsonString *json_string, size_t need_sz) ; 
 	int (*ensure_memory)(JsonString *json_string, size_t need_sz) ;
 	int (*append_char)(JsonString *json, char ch) ;
 	int (*append_string)(JsonString *json, const char *str, size_t sz) ;
 	JsonString* (*malloc)(size_t sz) ;
+	int (*init) (JsonString *json_string, size_t sz) ;
 	void (*free)(JsonString *json_string) ;
+    void (*deconstruct)(JsonString *json_string) ;
 }JsonStringFunc ;
 
 #ifdef __cplusplus

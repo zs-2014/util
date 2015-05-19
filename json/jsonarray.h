@@ -1,20 +1,22 @@
 #ifndef __JSON_ARRAY__H
 #define __JSON_ARRAY__H
 
-struct JsonObject ;
+struct JsonValue ;
 
 typedef struct JsonArray
 {
-	struct JsonObject **json_objects ;	
+	struct JsonValue **json_objects ;	
 	int total_sz ;
 	int use_sz ;
 }JsonArray ;
 
 typedef struct JsonArrayFunc
 {
-	JsonArray* (*malloc)(size_t sz) ;		
+	JsonArray* (*malloc)(size_t sz) ;
+	int (*init) (JsonArray *json_ay, size_t sz) ;
 	void (*free)(JsonArray *json_ay) ;
-	int (*append)(JsonArray *json_ay, struct JsonObject *json_object) ;
+    void (*deconstruct) (JsonArray *json_ay) ;
+	int (*append)(JsonArray *json_ay, struct JsonValue *json_value) ;
 }JsonArrayFunc;
 
 #endif

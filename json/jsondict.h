@@ -4,12 +4,12 @@
 struct JsonString;
 struct Dict;
 struct DictNode;
-struct JsonObject;
+struct JsonValue;
 
 typedef struct DictNode
 {
 	struct JsonString *key ;
-	struct JsonObject *value ;	
+	struct JsonValue *value ;	
 	struct DictNode *next ;
 }DictNode; 
 
@@ -30,13 +30,14 @@ typedef struct JsonDict
 typedef struct JsonDictFunc
 {
 	JsonDict* (*malloc) (size_t sz) ;		
+	int (*init) (JsonDict *json_dict, size_t sz) ;
+    void (*deconstruct) (JsonDict *json_dict) ;
 	void (*free) (JsonDict *json_dict) ;
-    int (*hash)(const JsonDict *json_dict, const JsonString *key) ;
-
+    int (*hash) (const JsonDict *json_dict, const struct JsonString *key) ;
 	int (*is_exist) (const JsonDict *json_dict, const struct JsonString *key) ;
-
-	struct JsonObject* (*set) (JsonDict *json_dict, struct JsonString *key, struct JsonObject *value) ;
-	struct JsonObject* (*get) (const JsonDict *json_dict, const struct JsonString *key) ;
+	struct JsonValue* (*set) (JsonDict *json_dict, struct JsonString *key, struct JsonValue *value) ;
+	struct JsonValue* (*get) (const JsonDict *json_dict, const struct JsonString *key) ;
+    struct DictNode *(*__find) (const JsonDict *json_dict, const struct JsonString *key) ;
 
 }JsonDictFunc;
 
