@@ -10,7 +10,7 @@ typedef struct LinkHashEntry
 
 typedef struct LinkHashTable
 {
-	LinkHashEntry **dict;
+	LinkHashEntry *dict;
 	size_t total_sz ;
 	size_t use_sz ;
     size_t collisions ;
