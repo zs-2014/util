@@ -167,6 +167,7 @@ LinkHashTable *rehash(LinkHashTable *lh_table, size_t sz)
             entry = tmp ;
         }
     }
+    free((void *)old_entry) ;
     return lh_table ;
 }
 
