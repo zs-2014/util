@@ -228,18 +228,18 @@ Config *read_config(const char *file_name)
     return config ;
 }
 
-int read_value(Config *config, const char *section_name, const char *key, char *value_buff)
+char *read_value(Config *config, const char *section_name, const char *key, char *value_buff)
 {
     if(!config || !key || !value_buff) 
-        return 0 ;
+        return nullptr ;
 
     value_buff[0] = '\0' ;
     ConfigSection *section = find_in_linked_list(config ->llst, section_name) ; 
     if(!section)
-        return 0;
+        return nullptr;
     const char *value = get(section ->lh_table, key) ;
     strcpy(value_buff, value) ;
-    return 1 ;
+    return value_buff ;
 }
 
 int config_is_ok(Config *config)
