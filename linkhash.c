@@ -60,7 +60,7 @@ static LinkHashEntry *malloc_link_hash_entry()
     return (LinkHashEntry *)calloc(1, sizeof(LinkHashEntry)) ;
 }
 
-int is_exist(const LinkHashTable *lh_table, const void *key)
+int is_in_link_hash_table(const LinkHashTable *lh_table, const void *key)
 {
     return look_up(lh_table, key) != nullptr ;
 }
@@ -119,7 +119,7 @@ void *set(LinkHashTable *lh_table, void *key, void *value)
     return __set(lh_table, lh_table ->dup_key(key), lh_table ->dup_value(value)) ;
 }
 
-void *get(LinkHashTable *lh_table, void *key) 
+void *get(LinkHashTable *lh_table, const void *key) 
 {
     if(!lh_table || !key)
         return nullptr ;
@@ -127,7 +127,7 @@ void *get(LinkHashTable *lh_table, void *key)
     return entry != nullptr ? entry ->value : nullptr;
 }
 
-void *pop(LinkHashTable *lh_table, void *key)
+void *pop(LinkHashTable *lh_table, const void *key)
 {
     if(!lh_table || !key)
         return nullptr ;
@@ -214,6 +214,7 @@ void free_link_hash_table(LinkHashTable *lh_table)
     free(lh_table) ;
 }
 
+#if 0
 #include <string.h>
 #include <time.h>
 #include "hash.h"
@@ -304,3 +305,4 @@ int main(int argc, char *argv[])
     test_pop(atoi(argv[1])) ;
     return 0 ;
 }
+#endif

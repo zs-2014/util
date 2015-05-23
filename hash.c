@@ -99,6 +99,7 @@ size_t ptrHash(const void *key)
     return ((ptrdiff_t)key* 0x9e370001UL) >> 4 ;
 }
 
+#if 0
 int main(int argc, char *argv[])
 {
     char *str = argc > 1 ? argv[1] : argv[0] ; 
@@ -109,3 +110,4 @@ int main(int argc, char *argv[])
     printf("ptrHash:%u\n", ptrHash(str)) ; 
     return 0 ;
 }
+#endif
