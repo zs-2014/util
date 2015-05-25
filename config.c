@@ -41,7 +41,6 @@ static int cmp_for_config(const void *val1, const void *val2)
 static void free_for_config(void *val)
 {
     ConfigSection *config_section = (ConfigSection *)val ;
-    printf("free section: %s\n", config_section ->section_name) ;
     free(config_section ->section_name) ;
     free_link_hash_table(config_section ->lh_table) ;
     free(config_section) ;
@@ -126,7 +125,7 @@ static char *tail_strip(char *str, char ch)
         return nullptr ;
     int len = strlen(str)-1 ;
     while(len >= 0 && str[len] == ch)
-        str[len] = '\0'  ; 
+        str[len--] = '\0'  ; 
     return str ;
 }
 
@@ -161,7 +160,7 @@ static Config *parse_config(Config *config, const char *buff)
         if(value[0] == '[')
         {
             //null section skip it
-            if(len == 2 && value[1] == ']') 
+            if(len == 2 || value[1] == ']') 
             {
                 section = nullptr ;
                 continue ;
@@ -171,7 +170,13 @@ static Config *parse_config(Config *config, const char *buff)
             if(end_section)
             {
                 section = malloc_config_section();
-                section ->section_name = strndup(value+1, end_section-value-1) ; 
+                section ->section_name = strip(strip(strndup(value+1, end_section-value-1), ' '), '\t') ; 
+                if(strlen(section ->section_name) == 0)
+                {
+                    free_for_config(section) ;
+                    section = nullptr ;
+                    continue ;
+                }
                 append_to_linked_list(config ->llst, section) ;
                 continue ;
             }
@@ -179,10 +184,10 @@ static Config *parse_config(Config *config, const char *buff)
         e_nm = strchr(s_nm, '=') ;
         if(!e_nm || s_nm == e_nm)
             continue ;
-        char *name = strip(strndup(s_nm, e_nm - s_nm), ' ') ;
+        char *name = strip(strip(strndup(s_nm, e_nm - s_nm), ' '), '\t') ;
         if(strlen(name) == 0)
             continue ;
-        value = strip(strdup(e_nm + 1), ' ');
+        value = strip(strip(strdup(e_nm + 1), ' '), '\t') ;
         if(section)    
             set(section ->lh_table, name, value) ;
         else
@@ -228,25 +233,71 @@ Config *read_config(const char *file_name)
     return config ;
 }
 
+const char *get_value(Config *config, const char *section_name, const char *key)
+{
+    if(!config || !key) 
+        return nullptr ;
+    ConfigSection *config_section = find_in_linked_list(config ->llst, section_name) ;
+    if(!config_section)
+        return nullptr ;
+    return get(config_section ->lh_table, key) ;
+}
+
 char *read_value(Config *config, const char *section_name, const char *key, char *value_buff)
 {
     if(!config || !key || !value_buff) 
         return nullptr ;
 
     value_buff[0] = '\0' ;
-    ConfigSection *section = find_in_linked_list(config ->llst, section_name) ; 
-    if(!section)
-        return nullptr;
-    const char *value = get(section ->lh_table, key) ;
+    const char *value = get_value(config, section_name, key) ;
+    if(!value)
+        return nullptr ;
     strcpy(value_buff, value) ;
     return value_buff ;
 }
+
+int write_value(Config *config, const char *section_name, const char *key, const char *value)
+{
+    if(!config || !key || strlen(key) == 0 || !value)
+        return 0  ;
+    ConfigSection *config_section = find_in_linked_list(config ->llst, section_name) ;
+    if(!config_section)
+        return 0 ;
+    return set(config_section ->lh_table, strdup(key), strdup(value)) != nullptr ;
+}
+
+int save_as(Config *config, const char *file_name, const char *mode)
+{
+    if(!config || !file_name)
+        return 0 ;
+    FILE *fp = fopen(file_name, mode) ; 
+
+    if(!fp)
+    {
+        snprintf(config ->errbuff, sizeof(config ->errbuff), "%s", strerror(errno)) ;
+        return 0 ;
+    }
+
+    ConfigSection *section = nullptr ;
+    for_each_in_linked_list(config ->llst, section)
+    {
+        char *k = nullptr ;
+        char *v = nullptr ;
+        fprintf(fp, "[%s]\n", section ->section_name ? section->section_name : "") ;
+        for_each_in_link_hash_table(section ->lh_table, k, v)
+        {
+            fprintf(fp, "%s=%s\n", k, v)  ;
+        }
+    }
+    fclose(fp) ;
+    return 1 ;
+}
+
 
 int config_is_ok(Config *config)
 {
     return config ? config ->errbuff[0] == '\0':0 ;
 }
-
 
 #if 1
 void test_string_split()
@@ -275,15 +326,7 @@ int main(int argc, char *argv[])
             printf("%s=%s\n", k, v)  ;
         }
     }
-    char buff[1024] = {0} ;
-    if(read_value(config, nullptr, "host", buff) == 0)
-    {
-        printf("in section:%s doesn't has key:%s", "o2_read", "host") ;
-    }
-    else
-    {
-        printf("section:null key:host value:%s\n", buff) ;
-    }
+    save_as(config, "test1.ini", "wb+") ;
     free_config(config) ;
     return 0;
 }

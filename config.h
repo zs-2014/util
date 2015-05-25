@@ -23,6 +23,8 @@ extern "C" {
 
 extern Config *read_config(const char *file_name) ;
 extern char *read_value(Config *config, const char *section_name, const char *key, char *value_buff) ;
+extern const char *get_value(Config *config, const char *section_name, const char *key) ;
+extern int save_as(Config *config, const char *file_name, const char *mode) ;
 extern int config_is_ok(Config *config) ;
 extern void free_config(Config *config) ;
 #ifdef __cplusplus
