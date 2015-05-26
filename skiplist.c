@@ -4,7 +4,7 @@
 
 #include "skiplist.h"
 
-#define default_skip_list_layers 16
+#define default_skip_list_levels 16 
 
 #ifndef nullptr
 #define nullptr NULL
@@ -26,19 +26,19 @@ void default_free_value(void *value)
     free(value) ;
 }
 
-SkipList *malloc_skip_list(size_t layers)
+SkipList *malloc_skip_list(size_t max_levels)
 {
-    layers = layers ? layers: default_skip_list_layers ;    
+    max_levels = max_levels ? max_levels : default_skip_list_levels;    
     SkipList *splist = (SkipList *)calloc(1, sizeof(SkipList)) ;
-    splist ->layers_num = layers ;
-    splist ->nodes = (SkipListNode *)calloc(layers, sizeof(SkipListNode)) ;
-    splist ->__pre_nodes = (SkipListNode **)calloc(layers, sizeof(SkipListNode *)) ;
+    splist ->max_levels = max_levels ;
+    splist ->nodes = (SkipListNode *)calloc(max_levels, sizeof(SkipListNode)) ;
+    splist ->__pre_nodes = (SkipListNode **)calloc(max_levels, sizeof(SkipListNode *)) ;
     splist ->cmp = default_cmp ;
     splist ->dup_value = default_dup_value ;
     splist ->free_value = default_free_value ;
     SkipListNode *head_node = splist ->nodes;
     int i = 1 ;
-    for(i=1; i < layers; i++)
+    for(i=1; i < max_levels; i++)
     {
         splist ->nodes[i].down = head_node ;
         head_node = splist ->nodes+i ;
@@ -63,11 +63,11 @@ void free_skip_list(SkipList *splist)
 
 static int gen_pre_node(SkipList *splist, const void *value)
 {
-    SkipListNode *pre_node = splist ->nodes+splist ->layers_num - 1 ;
-    size_t layers = splist ->layers_num ;
+    SkipListNode *pre_node = splist ->nodes+splist ->max_levels- 1 ;
+    size_t max_levels = splist ->max_levels ;
     while(pre_node)
     {
-        --layers ;
+        --max_levels;
         SkipListNode *curr_node = pre_node ->next ;
         while(curr_node)
         {
@@ -79,7 +79,7 @@ static int gen_pre_node(SkipList *splist, const void *value)
             pre_node = curr_node ;
             curr_node = curr_node ->next ;
         }
-        splist ->__pre_nodes[layers] = pre_node ;
+        splist ->__pre_nodes[max_levels] = pre_node ;
         pre_node = pre_node ->down ;
     }
     return 1;
@@ -99,25 +99,25 @@ void *insert_into_skip_list(SkipList *splist, void *value)
         return nullptr ; 
     if(gen_pre_node(splist, value) == 0)
         return nullptr ;
-    size_t layers = random_level() ; 
-    layers = layers > splist ->layers_num ? splist ->layers_num : layers ;
-    SkipListNode *insert_nodes = (SkipListNode *)calloc(layers, sizeof(SkipListNode)) ;
+    size_t levels = random_level() ; 
+    levels = levels > splist ->max_levels? splist ->max_levels: levels;
+    SkipListNode *insert_nodes = (SkipListNode *)calloc(levels, sizeof(SkipListNode)) ;
     value = splist ->dup_value(value) ;
-    while(layers > 0)
+    while(levels > 0)
     {
-        --layers ;
-        SkipListNode *next = splist ->__pre_nodes[layers] ->next ;
-        insert_nodes[layers].value = value ;
+        --levels;
+        SkipListNode *next = splist ->__pre_nodes[levels] ->next ;
+        insert_nodes[levels].value = value ;
 
-        splist ->__pre_nodes[layers] ->next = &insert_nodes[layers];
-        insert_nodes[layers].pre = splist ->__pre_nodes[layers] ;
+        splist ->__pre_nodes[levels] ->next = &insert_nodes[levels];
+        insert_nodes[levels].pre = splist ->__pre_nodes[levels] ;
 
-        insert_nodes[layers].next = next;
+        insert_nodes[levels].next = next;
         if(next)
-            next ->pre = &insert_nodes[layers] ;
+            next ->pre = &insert_nodes[levels] ;
 
-        if(layers != 0)
-            insert_nodes[layers].down = insert_nodes+layers-1 ;
+        if(levels != 0)
+            insert_nodes[levels].down = insert_nodes+levels-1 ;
         else
             insert_nodes[0].down = nullptr ;
     }
@@ -127,7 +127,7 @@ void *insert_into_skip_list(SkipList *splist, void *value)
 
 static SkipListNode *find_skip_list_node(SkipList *splist, const void *value)
 {
-    SkipListNode *pre_node = splist ->nodes+splist ->layers_num - 1 ;
+    SkipListNode *pre_node = splist ->nodes+splist ->max_levels - 1 ;
     while(pre_node)
     {
         SkipListNode *curr_node = pre_node ->next ;
@@ -182,7 +182,7 @@ int is_in_skip_list(SkipList *splist, const void *value)
 void print_skip_list(SkipList *splist)
 {
     int i = 0 ;
-    for(i=0; i < splist ->layers_num; i++)
+    for(i=0; i < splist ->max_levels; i++)
     {
         SkipListNode *node = splist->nodes[i].next ;
         printf("Layer %d: [Null]->", i+1) ;

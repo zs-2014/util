@@ -12,7 +12,7 @@ typedef struct SkipListNode
 typedef struct SkipList
 {
 	SkipListNode *nodes ;
-	size_t layers_num ;
+	size_t max_levels;
 	size_t curr_node_num ;
 	int (*cmp)(const void *val1, const void *val2) ;
 	void * (*dup_value)(void *value) ;
@@ -25,7 +25,7 @@ typedef struct SkipList
 extern "C"{
 #endif
 
-extern SkipList *malloc_skip_list(size_t layers) ;
+extern SkipList *malloc_skip_list(size_t max_levels) ;
 extern void free_skip_list(SkipList *splist) ;
 extern void *insert_into_skip_list(SkipList *splist, void *value) ;
 extern void *delete_from_skip_list(SkipList *splist, const void *value) ;
