@@ -32,7 +32,7 @@ extern void free_linked_list(LinkedList *llst) ;
 extern void *append_to_linked_list(LinkedList *llst, void *value) ;
 extern int is_in_linked_list(LinkedList *llst, const void *value) ;
 extern void *find_in_linked_list(LinkedList *llst, const void *value) ;
-extern int delete_from_linked_list(LinkedList *llst, void *value) ;
+extern void *delete_from_linked_list(LinkedList *llst, void *value) ;
 #ifdef __cplusplus
 }
 #endif

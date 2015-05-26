@@ -101,7 +101,7 @@ void *find_in_linked_list(LinkedList *llst, const void *value)
    return node ? node ->value : nullptr ;
 }
 
-int delete_from_linked_list(LinkedList *llst, void *value)
+void *delete_from_linked_list(LinkedList *llst, void *value)
 {
     if(!llst || !llst ->head || !value)
         return 0;
@@ -114,9 +114,10 @@ int delete_from_linked_list(LinkedList *llst, void *value)
         else
             llst ->head = llst ->head ->next;
         llst ->count-- ;
-        llst ->free_value(node ->value) ;
+        value = node ->value ;
+        //llst ->free_value(node ->value) ;
         free(node) ;
-        return 1; 
+        return value; 
     }
 
     ListNode *pre_node = llst ->head ;
@@ -129,9 +130,10 @@ int delete_from_linked_list(LinkedList *llst, void *value)
         node = node ->next ;
     }
     if(!node)
-        return 0;
+        return nullptr;
     pre_node ->next = node ->next;
-    llst ->free_value(node ->value) ;
+    value = node ->value ;
+    //llst ->free_value(node ->value) ;
     free(node) ;
     if(node == llst ->tail)
     {
@@ -139,7 +141,7 @@ int delete_from_linked_list(LinkedList *llst, void *value)
         llst ->tail ->next = nullptr ;
     }
     llst ->count-- ;
-    return 1;
+    return value;
 }
 
 int count_linked_list(LinkedList *llst)
