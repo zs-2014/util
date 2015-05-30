@@ -1,8 +1,8 @@
 #ifndef __JSON_STRING__H
 #define __JSON_STRING__H
 
-#ifndef nullptr
-#define nullptr NULL
+#ifndef null
+#define null NULL
 #endif 
 
 typedef struct JsonString

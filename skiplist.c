@@ -6,8 +6,8 @@
 
 #define default_skip_list_levels 16 
 
-#ifndef nullptr
-#define nullptr NULL
+#ifndef null
+#define null NULL
 #endif
 
 
@@ -96,9 +96,9 @@ int random_level()
 void *insert_into_skip_list(SkipList *splist, void *value) 
 {
     if(!splist)
-        return nullptr ; 
+        return null ; 
     if(gen_pre_node(splist, value) == 0)
-        return nullptr ;
+        return null ;
     size_t levels = random_level() ; 
     levels = levels > splist ->max_levels? splist ->max_levels: levels;
     SkipListNode *insert_nodes = (SkipListNode *)calloc(levels, sizeof(SkipListNode)) ;
@@ -119,7 +119,7 @@ void *insert_into_skip_list(SkipList *splist, void *value)
         if(levels != 0)
             insert_nodes[levels].down = insert_nodes+levels-1 ;
         else
-            insert_nodes[0].down = nullptr ;
+            insert_nodes[0].down = null ;
     }
     splist ->curr_node_num++ ;
     return value ;
@@ -143,16 +143,16 @@ static SkipListNode *find_skip_list_node(SkipList *splist, const void *value)
         }
         pre_node = pre_node ->down ;
     }
-    return nullptr ;
+    return null ;
 }
 
 void *delete_from_skip_list(SkipList *splist, const void *value)
 {
     if(!splist)
-        return nullptr ;
+        return null ;
     SkipListNode *node = find_skip_list_node(splist, value) ;
     if(!node)
-        return nullptr ;
+        return null ;
     void *value1 = node ->value ;
     while(node)
     {
@@ -171,12 +171,12 @@ void *delete_from_skip_list(SkipList *splist, const void *value)
 void *find_in_skip_list(SkipList *splist, const void *value)
 {
     SkipListNode *node = find_skip_list_node(splist, value);
-    return node ? node ->value : nullptr ;
+    return node ? node ->value : null ;
 }
 
 int is_in_skip_list(SkipList *splist, const void *value)
 {
-    return find_skip_list_node(splist, value) != nullptr ; 
+    return find_skip_list_node(splist, value) != null ; 
 }
 
 void print_skip_list(SkipList *splist)
@@ -210,7 +210,7 @@ void test_insert_to(int cnt)
     {
         sprintf(buff, "test:%d", i+1) ;
         insert_into_skip_list(splist, buff) ;
-        if(find_in_skip_list(splist, buff) == nullptr)
+        if(find_in_skip_list(splist, buff) == null)
         {
             printf("missing value:[%s]\n", buff) ;
         }
@@ -219,7 +219,7 @@ void test_insert_to(int cnt)
     for(i=cnt; i < cnt+10; i++)
     {
         sprintf(buff, "test:%d", i+1) ;
-        if(find_in_skip_list(splist, buff) == nullptr)
+        if(find_in_skip_list(splist, buff) == null)
         {
             printf("missing value:[%s]\n", buff) ;
         }
@@ -234,12 +234,12 @@ void test_delete_node(int cnt)
     SkipList *splist = malloc_skip_list(0) ;
     splist ->cmp = strcmp ;
     splist ->dup_value = strdup ;
-    srand(time(nullptr)) ;
+    srand(time(null)) ;
     for(i=0; i < cnt; i++)
     {
         sprintf(buff, "test:%d", i+1) ;
         insert_into_skip_list(splist, buff) ;
-        if(find_in_skip_list(splist, buff) == nullptr)
+        if(find_in_skip_list(splist, buff) == null)
         {
             printf("missing value:[%s]\n", buff) ;
         }
@@ -250,14 +250,14 @@ void test_delete_node(int cnt)
     {
         sprintf(buff, "test:%d", i+1) ;
         void *value = delete_from_skip_list(splist, buff) ;
-        if(value != nullptr)
+        if(value != null)
         {
             printf("delete value [%s]\n", buff) ; 
             free(value) ;
         }
         else
             printf("not found value:[%s]\n", buff) ;
-        if(find_in_skip_list(splist, buff) != nullptr)
+        if(find_in_skip_list(splist, buff) != null)
         {
             printf("cann't delete value:[%s]\n", buff) ;
         }

@@ -73,7 +73,7 @@ static void skip_spaces(JsonReader *json_reader)
 static char *unicode_point_to_utf8(int cp, char *result)
 {
     if(!result)
-        return nullptr ;
+        return null ;
     if (cp <= 0x7f) 
     {
         result[0] = cp;
@@ -186,7 +186,7 @@ char escape(JsonReader *json_reader)
 
 static JsonString *copy_key(JsonReader *json_reader, JsonValue *json_value)
 {
-    JsonString *json_string = nullptr ;
+    JsonString *json_string = null ;
 
     if(json_value)
         json_string = &json_value ->object.json_string ;
@@ -194,7 +194,7 @@ static JsonString *copy_key(JsonReader *json_reader, JsonValue *json_value)
         json_string = json_string_func.malloc(0);
 
     if(!json_string)
-        return nullptr ;
+        return null ;
     while(is_valid(json_reader) && !is_key_end(json_reader))
     { 
         char ch = json_reader ->buff[json_reader ->curr_pos++] ;
@@ -248,15 +248,15 @@ __fails:
     else
         json_string_func.deconstruct(json_string) ;
 
-    return nullptr ;
+    return null ;
 }
 
 static JsonValue *copy_string_value(JsonReader *json_reader)
 {
     JsonValue *json_value = json_value_func.malloc(STRING_VALUE_TYPE) ;
     if(!json_value)
-        return nullptr ;
-   return copy_key(json_reader, json_value) ? json_value : nullptr ; 
+        return null ;
+   return copy_key(json_reader, json_value) ? json_value : null ; 
 }
 
 static int start_with(const char *s1, const char *s2)
@@ -374,7 +374,7 @@ static JsonValue *parse_value(JsonReader *json_reader)
         snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff), 
                 "unknown value type at position %d", json_reader ->curr_pos) ;
     }
-    return nullptr ;
+    return null ;
 }
 
 static int is_int64_over_flow(char *number)
@@ -418,7 +418,7 @@ static JsonValue *parse_number_object(JsonReader *json_reader)
 {
     //is_number_object保证最起码有一个数字存在
     if(!is_number_object(json_reader))
-        return nullptr ;
+        return null ;
     char number[1024] = {0} ;
     number[0] = json_reader ->buff[json_reader ->curr_pos++] ;
     int i = 1 ;
@@ -437,18 +437,18 @@ static JsonValue *parse_number_object(JsonReader *json_reader)
     }
     JsonValue *json_value = json_value_func.malloc(NUMBER_VALUE_TYPE) ;
     if(!json_value)
-        return nullptr ;
+        return null ;
     number[i] = '\0' ;
     if(in('e', number) || in('E', number) || in('.', number))
     {
-        char *endptr = nullptr ;
+        char *endptr = null ;
         double v = strtod(number, &endptr) ;
         if(endptr != number + i)
         {
             snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff), 
                     "illegal number at position %d", json_reader ->curr_pos + (endptr-number)) ; 
             json_value_func.free(json_value) ;
-            return nullptr ;
+            return null ;
         }
         json_value ->type = DOUBLE_VALUE_TYPE ;
         json_value ->object.d = v ;
@@ -456,44 +456,44 @@ static JsonValue *parse_number_object(JsonReader *json_reader)
     }
     else
     {
-        char *endptr = nullptr ;
+        char *endptr = null ;
         int64_t v = (int64_t)strtoll(number, &endptr, 10) ;
         if(endptr != number + i)
         {
             snprintf(json_reader ->errbuff, sizeof(json_reader ->errbuff), 
                     "illegal number at position %d", json_reader ->curr_pos + (endptr-number)) ; 
             json_value_func.free(json_value) ;
-            return nullptr ;
+            return null ;
         }
         //判断数据是否溢出
         if(is_int64_over_flow(number))
         {
             if(number[0] != '-') 
-                v = strtoll("9223372036854775807", nullptr, 10) ; 
+                v = strtoll("9223372036854775807", null, 10) ; 
             else
-                v = strtoll("-9223372036854775808", nullptr, 10) ;
+                v = strtoll("-9223372036854775808", null, 10) ;
         }
         json_value ->type = INTEGER_VALUE_TYPE ;
         json_value ->object.i = v;
         return json_value ;
     }
-    return nullptr ;
+    return null ;
 }
 
 static JsonValue *parse_array_object(JsonReader *json_reader)
 {
     skip_spaces(json_reader) ;
     if(!is_array_object_start(json_reader))
-        return nullptr ; 
+        return null ; 
     //skip [
     json_reader ->curr_pos++ ;
     //skip \t \r ...
     skip_spaces(json_reader) ;
     JsonValue *json_value = json_value_func.malloc(ARRAY_VALUE_TYPE) ;
     if(!json_value)
-        return nullptr ;
+        return null ;
     JsonArray *json_ay = &json_value ->object.json_array ;
-    JsonValue *v = nullptr ; 
+    JsonValue *v = null ; 
     if(!json_ay)
         goto __fails ;
     int has_comma = -1 ;
@@ -522,7 +522,7 @@ static JsonValue *parse_array_object(JsonReader *json_reader)
         }
         if(!json_array_func.append(json_ay, v))
             goto __fails ;
-        v = nullptr ;
+        v = null ;
     }
     
     if(!is_array_object_end(json_reader) || has_comma == 1)
@@ -548,13 +548,13 @@ __fails:
         json_value_func.free(json_value) ;
     if(v)
         json_value_func.free(v) ;
-    return nullptr ;
+    return null ;
 }
 
 static JsonValue *parse_boolean_object(JsonReader *json_reader)
 {
     if(!is_boolean_object(json_reader))
-        return nullptr ;
+        return null ;
     //len("true") == 4 len("false") == 5
     if(start_with(json_reader ->buff + json_reader ->curr_pos, "false"))
     {
@@ -570,7 +570,7 @@ static JsonValue *parse_boolean_object(JsonReader *json_reader)
 static JsonValue *parse_null_object(JsonReader *json_reader)
 {
     if(!is_null_object(json_reader))
-        return nullptr ;
+        return null ;
     //len(null) == 4
     json_reader ->curr_pos += 4 ; 
     return get_null_json_value() ;
@@ -580,12 +580,12 @@ static JsonValue *parse_null_object(JsonReader *json_reader)
 static JsonValue *parse_string_object(JsonReader *json_reader)
 {
     if(!is_string_object_start(json_reader)) 
-        return nullptr ;
+        return null ;
     //跳过开始的 "
     json_reader ->curr_pos++ ;
     JsonValue *json_value = copy_string_value(json_reader);
     if(!json_value)
-        return nullptr ;
+        return null ;
 
     return json_value ;
 }
@@ -610,20 +610,20 @@ static JsonValue *parse_dict_object(JsonReader *json_reader)
 {
     skip_spaces(json_reader) ;
     if(!is_valid(json_reader)) 
-        return nullptr ;
+        return null ;
     //find dict start token '{'
     if(!is_dict_object_start(json_reader))
-        return nullptr ;
+        return null ;
     //跳过 '{'
     json_reader ->curr_pos++ ; 
     //跳过空格
     skip_spaces(json_reader)  ;  
     JsonValue *json_value = json_value_func.malloc(DICT_VALUE_TYPE) ;
     if(!json_value)
-        return nullptr ;
+        return null ;
     JsonDict *json_dict = &json_value ->object.json_dict ;
-    JsonString *key = nullptr ;
-    JsonValue *value = nullptr ;
+    JsonString *key = null ;
+    JsonValue *value = null ;
     int has_comma = -1 ;
     while(is_valid(json_reader) && !is_dict_object_end(json_reader))
     {
@@ -643,7 +643,7 @@ static JsonValue *parse_dict_object(JsonReader *json_reader)
             goto __fails ;
         }
         //拷贝key
-        key = copy_key(json_reader, nullptr) ;
+        key = copy_key(json_reader, null) ;
         if(!key)
             goto __fails ;
         if(!is_valid(json_reader))
@@ -677,8 +677,8 @@ static JsonValue *parse_dict_object(JsonReader *json_reader)
         {
             has_comma = 0;
         }
-        key = nullptr ;
-        value = nullptr ;
+        key = null ;
+        value = null ;
     }
 
     //最后一对key-value不能再跟着一个 ','
@@ -708,7 +708,7 @@ __fails:
         json_value_func.free(value) ;
     if(json_value)
         json_value_func.free(json_value) ;
-    return nullptr ;
+    return null ;
 }
 
 static int init_json_reader(JsonReader *json_reader, const char *buff, size_t sz)
@@ -719,7 +719,7 @@ static int init_json_reader(JsonReader *json_reader, const char *buff, size_t sz
     json_reader ->buff = (char *)calloc(1, sizeof(char)*sz) ;
     if(!json_reader ->buff)
         return 0;
-    json_reader ->json_value = nullptr ;
+    json_reader ->json_value = null ;
     json_reader ->total_sz = sz ; 
     json_reader ->curr_pos = 0 ;
     memcpy(json_reader ->buff, buff, sz) ;
@@ -731,12 +731,12 @@ static JsonValue * get_json_value(JsonReader *json_reader)
 {
     if(!json_reader_func.is_error(json_reader))
         return json_reader ->json_value ;
-    return nullptr ;
+    return null ;
 }
 
 static int is_occur_error(JsonReader *json_reader)
 {
-    return json_reader == nullptr || (json_reader ->json_value == nullptr && json_reader ->errbuff[0] != '\0') ;
+    return json_reader == null || (json_reader ->json_value == null && json_reader ->errbuff[0] != '\0') ;
 }
 
 static void deconstruct_json_reader(JsonReader *json_reader)
@@ -747,7 +747,7 @@ static void deconstruct_json_reader(JsonReader *json_reader)
         free(json_reader ->buff) ; 
     if(json_reader ->json_value)
         json_value_func.deconstruct(json_reader ->json_value) ;
-    json_reader ->buff = nullptr ;
+    json_reader ->buff = null ;
     json_reader ->total_sz = 0 ;
     json_reader ->curr_pos = 0 ;
     memset(json_reader ->errbuff, 0, sizeof(json_reader ->errbuff)) ;
@@ -767,15 +767,15 @@ static void free_json_reader(JsonReader *json_reader)
 static JsonReader *malloc_json_reader(const char *buff, size_t sz)
 {
     if(!buff || !sz)
-        return nullptr ;
+        return null ;
 
     JsonReader *json_reader = (JsonReader *)calloc(1, sizeof(JsonReader)) ;
     if(!json_reader)
-        return nullptr ;
+        return null ;
     if(!json_reader_func.init(json_reader, buff, sz))
     {
         json_reader_func.free(json_reader) ;
-        return nullptr ;
+        return null ;
     }
     return json_reader ;
 }

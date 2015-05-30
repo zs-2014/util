@@ -4,8 +4,8 @@
 #include <stddef.h>
 #include "linkhash.h"
 
-#ifndef nullptr
-#define nullptr NULL
+#ifndef null
+#define null NULL
 #endif
 
 #define default_hash_table_size 1024
@@ -52,7 +52,7 @@ static LinkHashEntry *look_up(const LinkHashTable *lh_table, const void *key)
             return entry ;
         entry = entry ->next ;
     }
-    return nullptr ;
+    return null ;
 }
 
 static LinkHashEntry *malloc_link_hash_entry()
@@ -62,7 +62,7 @@ static LinkHashEntry *malloc_link_hash_entry()
 
 int is_in_link_hash_table(const LinkHashTable *lh_table, const void *key)
 {
-    return look_up(lh_table, key) != nullptr ;
+    return look_up(lh_table, key) != null ;
 }
 
 static void *__set(LinkHashTable *lh_table, void *key, void *value)
@@ -112,7 +112,7 @@ static void *__set(LinkHashTable *lh_table, void *key, void *value)
 void *set(LinkHashTable *lh_table, void *key, void *value)
 {
     if(!lh_table || !key || !value)
-        return nullptr ;
+        return null ;
     
     if(lh_table ->total_sz * 0.6 < lh_table ->use_sz)
         rehash(lh_table, lh_table ->total_sz<<1) ;
@@ -122,31 +122,31 @@ void *set(LinkHashTable *lh_table, void *key, void *value)
 void *get(LinkHashTable *lh_table, const void *key) 
 {
     if(!lh_table || !key)
-        return nullptr ;
+        return null ;
     LinkHashEntry *entry = look_up(lh_table, key) ;
-    return entry != nullptr ? entry ->value : nullptr;
+    return entry != null ? entry ->value : null;
 }
 
 void *pop(LinkHashTable *lh_table, const void *key)
 {
     if(!lh_table || !key)
-        return nullptr ;
+        return null ;
     LinkHashEntry *entry = look_up(lh_table, key) ;
     if(!entry)
-        return nullptr ;
+        return null ;
 
     void *value = entry ->value ;
     lh_table ->use_sz-- ;
     lh_table ->free_key(entry ->key) ;
-    entry ->key = nullptr ;
-    entry ->value = nullptr ;
+    entry ->key = null ;
+    entry ->value = null ;
     return value;
 }
 
 LinkHashTable *rehash(LinkHashTable *lh_table, size_t sz)
 {
     if(!lh_table) 
-        return nullptr ;
+        return null ;
     sz = sz ? sz : default_hash_table_size ;
     LinkHashEntry *entry = (LinkHashEntry *)calloc(sz, sizeof(LinkHashEntry)) ;
     LinkHashEntry *old_entry = lh_table ->dict ;
@@ -256,7 +256,7 @@ void test_set(int cnt)
         *value = 10 + i ;
         set(lh_table, key,  value) ;
         int *old_value = get(lh_table, key) ;
-        if(old_value == nullptr || *value != *old_value)
+        if(old_value == null || *value != *old_value)
         {
             printf("missing key:%d value:%d\n", *key, *value) ;
         }
@@ -282,13 +282,13 @@ void test_pop(int cnt)
     for(i=0; i < cnt; i++)
     {
         int *value = pop(lh_table, p[i]) ;
-        if(value == nullptr)
+        if(value == null)
         {
             printf("missing key:%s\n", *p[i]) ;
         }
         free(value) ;
         value = get(lh_table, p[i]) ;
-        if(value != nullptr)
+        if(value != null)
         {
             printf("key not pop\n") ;
         }

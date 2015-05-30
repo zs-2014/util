@@ -10,12 +10,13 @@
 #include "hash.h"
 #include "linklist.h"
 #include "linkhash.h"
+#include "string.h"
 #include "config.h"
 
 #define default_section_size 10
 
-#ifndef nullptr
-#define nullptr NULL
+#ifndef null
+#define null NULL
 #endif
 
 
@@ -75,94 +76,33 @@ void free_config(Config *config)
     free(config) ;
 }
 
-LinkedList *split(const char *buff, char c, int n, int drop_null_str)
-{
-    if(!buff)
-        return nullptr ;
-
-    LinkedList *llst = malloc_linked_list() ;
-    if(n == 0)
-    {
-        append_to_linked_list(llst, strdup(buff)) ;
-        return llst ;
-    }
-    n = (n < 0 ? INT_MAX : n );
-    const char *start = buff ;
-    const char *end = nullptr;
-    do
-    {
-        end = strchr(start, c) ; 
-        if(end == start)
-        {
-            if(!drop_null_str)
-                append_to_linked_list(llst, strdup("\0")) ;
-        }
-        else if(end)
-            append_to_linked_list(llst, strndup(start, end - start)) ;
-        else
-            append_to_linked_list(llst, strdup(start)) ;
-        start = end+1 ;
-        n-- ;
-    }while(end && n > 0) ;
-
-    return llst ;
-}
-
-static char *head_strip(char *str, char ch)
-{
-    if(!str)
-        return nullptr ;
-    char *orig = str ; 
-    while(*str != '\0' && *str == ch)
-        str++ ;
-    strcpy(orig, str) ;
-    return orig ;
-}
-
-static char *tail_strip(char *str, char ch)
-{
-    if(!str)
-        return nullptr ;
-    int len = strlen(str)-1 ;
-    while(len >= 0 && str[len] == ch)
-        str[len--] = '\0'  ; 
-    return str ;
-}
-
-static char *strip(char *str, char ch)
-{
-    if(!str)
-        return nullptr ;
-    return tail_strip(head_strip(str, ch), ch) ;
-}
-
 //[test]
 //ip = xxxx
 static Config *parse_config(Config *config, const char *buff)
 {
     LinkedList *llst = split(buff, '\n', -1, 1) ; 
     if(!llst)
-        return nullptr ;
+        return null ;
 
     ConfigSection *null_section = malloc_config_section() ;
     append_to_linked_list(config ->llst, null_section) ;
-    ConfigSection *section = nullptr;
-    char *value = nullptr ;
+    ConfigSection *section = null;
+    char *value = null ;
     for_each_in_linked_list(llst, value)
     {
         int len = strlen(strip(value, ' ')) ;           
         if(len == 0 || value[0] == '#')
             continue ;
         char *s_nm = value ; 
-        char *e_nm = nullptr ;
-        char *s_val = nullptr ;
+        char *e_nm = null ;
+        char *s_val = null ;
         //possible new section
         if(value[0] == '[')
         {
             //null section skip it
             if(len == 2 || value[1] == ']') 
             {
-                section = nullptr ;
+                section = null ;
                 continue ;
             }
             char *end_section = strchr(value, ']') ;
@@ -174,7 +114,7 @@ static Config *parse_config(Config *config, const char *buff)
                 if(strlen(section ->section_name) == 0)
                 {
                     free_for_config(section) ;
-                    section = nullptr ;
+                    section = null ;
                     continue ;
                 }
                 append_to_linked_list(config ->llst, section) ;
@@ -194,13 +134,13 @@ static Config *parse_config(Config *config, const char *buff)
             set(null_section ->lh_table, name, value) ;
     }
     free_linked_list(llst) ;
-    return nullptr ;  
+    return null ;  
 }
 
 Config *read_config(const char *file_name) 
 {
     if(!file_name)
-        return nullptr ;
+        return null ;
     Config *config = malloc_config(file_name)  ;
     int fd = open(file_name, O_RDONLY) ;
     if(fd < 0)
@@ -236,22 +176,22 @@ Config *read_config(const char *file_name)
 const char *get_value(Config *config, const char *section_name, const char *key)
 {
     if(!config || !key) 
-        return nullptr ;
+        return null ;
     ConfigSection *config_section = find_in_linked_list(config ->llst, section_name) ;
     if(!config_section)
-        return nullptr ;
+        return null ;
     return get(config_section ->lh_table, key) ;
 }
 
 char *read_value(Config *config, const char *section_name, const char *key, char *value_buff)
 {
     if(!config || !key || !value_buff) 
-        return nullptr ;
+        return null ;
 
     value_buff[0] = '\0' ;
     const char *value = get_value(config, section_name, key) ;
     if(!value)
-        return nullptr ;
+        return null ;
     strcpy(value_buff, value) ;
     return value_buff ;
 }
@@ -263,7 +203,7 @@ int write_value(Config *config, const char *section_name, const char *key, const
     ConfigSection *config_section = find_in_linked_list(config ->llst, section_name) ;
     if(!config_section)
         return 0 ;
-    return set(config_section ->lh_table, strdup(key), strdup(value)) != nullptr ;
+    return set(config_section ->lh_table, strdup(key), strdup(value)) != null ;
 }
 
 int save_as(Config *config, const char *file_name, const char *mode)
@@ -278,11 +218,11 @@ int save_as(Config *config, const char *file_name, const char *mode)
         return 0 ;
     }
 
-    ConfigSection *section = nullptr ;
+    ConfigSection *section = null ;
     for_each_in_linked_list(config ->llst, section)
     {
-        char *k = nullptr ;
-        char *v = nullptr ;
+        char *k = null ;
+        char *v = null ;
         fprintf(fp, "[%s]\n", section ->section_name ? section->section_name : "") ;
         for_each_in_link_hash_table(section ->lh_table, k, v)
         {
@@ -303,7 +243,7 @@ int config_is_ok(Config *config)
 void test_string_split()
 {    
     LinkedList *llst = split("a\nb\nc\n\ne\nf\nd", '\n', 0, 0) ;
-    char *value = nullptr;
+    char *value = null;
     printf("[") ;
     for_each_in_linked_list(llst, value)
     {
@@ -315,11 +255,11 @@ void test_string_split()
 int main(int argc, char *argv[])
 {
     Config *config = read_config("test.ini") ;
-    ConfigSection *section = nullptr ;
+    ConfigSection *section = null ;
     for_each_in_linked_list(config ->llst, section)
     {
-        char *k = nullptr ;
-        char *v = nullptr ;
+        char *k = null ;
+        char *v = null ;
         printf("[%s]\n", section ->section_name ? section->section_name : "") ;
         for_each_in_link_hash_table(section ->lh_table, k, v)
         {

@@ -1,7 +1,7 @@
 #ifndef __JSON__READER__H
 #define __JSON__READER__H
 
-#define nullptr NULL
+#define null NULL
 #define INVALID_POS 0xFFFFFFFF
 
 #include "jsonstring.h"

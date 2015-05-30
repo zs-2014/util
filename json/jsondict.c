@@ -59,8 +59,8 @@ static int init_json_dict(JsonDict *json_dict, size_t sz)
     size_t i = 0 ;
     for(i=0; i < sz; i++)
     {
-        json_dict ->dict[i].head_node = nullptr ;
-        json_dict ->dict[i].tail_node = nullptr ;
+        json_dict ->dict[i].head_node = null ;
+        json_dict ->dict[i].tail_node = null ;
     }
     json_dict ->total_sz = sz ;
     json_dict ->use_sz = 0 ;
@@ -92,7 +92,7 @@ static void deconstruct_json_dict(JsonDict *json_dict)
         free_dict(json_dict ->dict+i) ;    
     }
     free(json_dict ->dict) ;
-    json_dict ->dict = nullptr ;  
+    json_dict ->dict = null ;  
     json_dict ->use_sz = 0 ;
     json_dict ->total_sz = 0 ;
 }
@@ -102,18 +102,18 @@ static void free_json_dict(JsonDict *json_dict)
 {
     json_dict_func.deconstruct(json_dict) ;
     free(json_dict) ;
-    json_dict = nullptr ;
+    json_dict = null ;
 }
 
 static JsonDict *malloc_json_dict(size_t sz)
 {
     JsonDict *json_dict = (JsonDict *)calloc(1, sizeof(JsonDict)) ; 
     if(!json_dict)
-        return nullptr;
+        return null;
     if(!json_dict_func.init(json_dict, sz))
     {
         json_dict_func.free(json_dict) ;
-        return nullptr ;
+        return null ;
     }
     return json_dict ;
 }
@@ -128,16 +128,16 @@ static int dict_hash(const JsonDict *json_dict, const JsonString *key)
 
 static int dict_is_exist(const JsonDict *json_dict, const JsonString *key)
 {
-    return json_dict_func.__find(json_dict, key) != nullptr ;
+    return json_dict_func.__find(json_dict, key) != null ;
 }
 
 static DictNode* dict_find(const JsonDict *json_dict, const JsonString *key)
 {
     if(!json_dict || !key)
-        return nullptr ;
+        return null ;
     int idx = json_dict_func.hash(json_dict, key) ;
     if(idx == -1)
-        return nullptr ;
+        return null ;
     DictNode *dict_node = json_dict ->dict[idx].head_node ;
     while(dict_node)
     {
@@ -145,14 +145,14 @@ static DictNode* dict_find(const JsonDict *json_dict, const JsonString *key)
             return dict_node ;
         dict_node = dict_node ->next ;
     }
-    return nullptr ;
+    return null ;
 }
 
 
 static JsonValue *dict_get(const JsonDict *json_dict, const JsonString *key)
 {
     DictNode *dict_node = json_dict_func.__find(json_dict, key) ;
-    return dict_node ? dict_node ->value : nullptr;
+    return dict_node ? dict_node ->value : null;
 }
 
 static JsonValue *dict_delete(JsonDict *json_dict, const JsonString *key)
@@ -171,11 +171,11 @@ static JsonValue *dict_set(JsonDict *json_dict, JsonString *key, JsonValue *valu
     }
     int idx = json_dict_func.hash(json_dict, key) ;
     if(idx == -1)
-        return nullptr ;
+        return null ;
     dict_node = (DictNode *)malloc(sizeof(DictNode)) ;
     if(!dict_node)
-        return nullptr ;
-    dict_node ->next = nullptr ;
+        return null ;
+    dict_node ->next = null ;
     dict_node ->key = key ;
     dict_node ->value = value ;
     

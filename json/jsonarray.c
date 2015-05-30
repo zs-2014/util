@@ -5,8 +5,8 @@
 #include "jsonarray.h"
 #include "jsonvalue.h"
 
-#ifndef nullptr
-#define nullptr NULL
+#ifndef null
+#define null NULL
 #endif
 
 /*struct JsonArrayFunc
@@ -79,7 +79,7 @@ static int init_json_array(JsonArray *json_ay, size_t sz)
         return 0 ;
     json_ay ->total_sz = 0 ;
     json_ay ->use_sz = 0 ;
-    json_ay ->json_objects = nullptr ;
+    json_ay ->json_objects = null ;
 
     if(!ensure_memory(json_ay, sz))
         return 0 ;
@@ -90,14 +90,14 @@ static JsonArray *malloc_json_array(size_t sz)
 {
     JsonArray *json_array = (JsonArray *)malloc(sizeof(JsonArray)) ; 
     if(!json_array)
-        return nullptr ;
-    json_array ->json_objects = nullptr ;
+        return null ;
+    json_array ->json_objects = null ;
     json_array ->total_sz = 0 ;
     json_array ->use_sz = 0 ;
     if(!ensure_memory(json_array, sz))
     {
         json_array_func.free(json_array) ;
-        return nullptr ;
+        return null ;
     }
     return json_array ;
 }

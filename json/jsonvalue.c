@@ -15,8 +15,8 @@ struct JsonValueFunc
 };
 */
 
-#ifndef nullptr
-#define nullptr NULL
+#ifndef null
+#define null NULL
 #endif
 
 static void free_json_object(JsonValue *json_value) ;
@@ -81,13 +81,13 @@ static JsonValue *malloc_json_object(JsonValueType type)
 {
     JsonValue *json_value = (JsonValue *)calloc(1, sizeof(JsonValue)) ;
     if(!json_value)
-        return nullptr ;
+        return null ;
 
     json_value ->type = type ;
     if(!json_value_func.init(json_value))
     {
         json_value_func.free(json_value) ;
-        return nullptr ;
+        return null ;
     }
     return json_value;
 }

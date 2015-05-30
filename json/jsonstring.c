@@ -128,7 +128,7 @@ static int init_json_string(JsonString *json_string, size_t sz)
 {
     if(!json_string)
         return 0 ;
-    json_string ->buff = nullptr ;
+    json_string ->buff = null ;
     json_string ->use_sz = 0 ;
     json_string ->total_sz = 0 ;
     if(!ensure_memory(json_string, sz))
@@ -142,7 +142,7 @@ static void deconstruct_json_string(JsonString *json_string)
         return ;
     if(json_string ->buff)
         free(json_string ->buff) ;
-    json_string ->buff = nullptr ;
+    json_string ->buff = null ;
     json_string ->total_sz = 0 ;
     json_string ->use_sz = 0 ;
 }
@@ -151,21 +151,21 @@ static void free_json_string(JsonString *json_string)
 {
     json_string_func.deconstruct(json_string) ;
     free(json_string) ;
-    json_string = nullptr ;
+    json_string = null ;
 }
 
 static JsonString *malloc_json_string(size_t sz)
 {     
     JsonString *json_string = (JsonString *)malloc(sizeof(JsonString)) ;
     if(!json_string)
-        return nullptr ;
-    json_string ->buff = nullptr ;
+        return null ;
+    json_string ->buff = null ;
     json_string ->total_sz = 0 ;
     json_string ->use_sz = 0 ;
     if(!json_string_func.ensure_memory(json_string, sz))
     {   
         json_string_func.free(json_string) ;
-        json_string = nullptr ;
+        json_string = null ;
     }
     return json_string ;
 }

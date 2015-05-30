@@ -2,8 +2,8 @@
 #include <stdio.h>
 
 #include "linklist.h"
-#ifndef nullptr
-#define nullptr NULL
+#ifndef null
+#define null NULL
 #endif
 
 static int cmp (const void *v1, const void *v2)
@@ -59,7 +59,7 @@ static ListNode *malloc_linked_list_node()
 void *append_to_linked_list(LinkedList *llst, void *value)
 {
     if(!llst || !value)
-        return nullptr ;
+        return null ;
     ListNode *node = malloc_linked_list_node() ;
     node ->value = llst ->dup_value(value) ;
     if(llst ->tail) 
@@ -79,7 +79,7 @@ void *append_to_linked_list(LinkedList *llst, void *value)
 ListNode *find_linked_list_node(LinkedList *llst, const void *value)
 {
     if(!llst)
-        return nullptr ;
+        return null ;
     ListNode *node = llst ->head ;
     while(node)
     {
@@ -87,18 +87,18 @@ ListNode *find_linked_list_node(LinkedList *llst, const void *value)
             return node ;
         node = node ->next ;
     }
-    return nullptr ;
+    return null ;
 }
 
 int is_in_linked_list(LinkedList *llst, const void *value)
 {
-    return find_linked_list_node(llst, value) != nullptr;
+    return find_linked_list_node(llst, value) != null;
 }
 
 void *find_in_linked_list(LinkedList *llst, const void *value)
 {
    ListNode *node =  find_linked_list_node(llst, value); 
-   return node ? node ->value : nullptr ;
+   return node ? node ->value : null ;
 }
 
 void *delete_from_linked_list(LinkedList *llst, void *value)
@@ -110,7 +110,7 @@ void *delete_from_linked_list(LinkedList *llst, void *value)
     if(llst ->cmp(node ->value, value) == 0)
     {
         if(llst ->head == llst ->tail)
-            llst ->head = llst ->tail = nullptr ;
+            llst ->head = llst ->tail = null ;
         else
             llst ->head = llst ->head ->next;
         llst ->count-- ;
@@ -130,7 +130,7 @@ void *delete_from_linked_list(LinkedList *llst, void *value)
         node = node ->next ;
     }
     if(!node)
-        return nullptr;
+        return null;
     pre_node ->next = node ->next;
     value = node ->value ;
     //llst ->free_value(node ->value) ;
@@ -138,7 +138,7 @@ void *delete_from_linked_list(LinkedList *llst, void *value)
     if(node == llst ->tail)
     {
         llst ->tail = pre_node ;
-        llst ->tail ->next = nullptr ;
+        llst ->tail ->next = null ;
     }
     llst ->count-- ;
     return value;
@@ -188,7 +188,7 @@ void test_delete(int cnt)
             printf("missing value: %s\n", buff) ;
         }
     }
-    srand(time(nullptr)) ;  
+    srand(time(null)) ;  
     for(i=0; i < cnt; i++)
     {
         sprintf(buff, "test:%d", rand() % cnt+1) ;
