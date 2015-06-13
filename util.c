@@ -1,4 +1,4 @@
-#include "string.h"
+#include "string_util.h"
 
 //判断一个字符串转化成字符int64有没有溢出
 int is_int64_over_flow(char *number)

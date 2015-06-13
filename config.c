@@ -10,7 +10,7 @@
 #include "hash.h"
 #include "linklist.h"
 #include "linkhash.h"
-#include "string.h"
+#include "string_util.h"
 #include "config.h"
 
 #define default_section_size 10
@@ -239,7 +239,7 @@ int config_is_ok(Config *config)
     return config ? config ->errbuff[0] == '\0':0 ;
 }
 
-#if 1
+#ifdef CONFIG
 void test_string_split()
 {    
     LinkedList *llst = split("a\nb\nc\n\ne\nf\nd", '\n', 0, 0) ;

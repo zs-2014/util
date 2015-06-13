@@ -184,6 +184,7 @@ char escape(JsonReader *json_reader)
 }
 
 
+//拷贝key  
 static JsonString *copy_key(JsonReader *json_reader, JsonValue *json_value)
 {
     JsonString *json_string = null ;
@@ -251,6 +252,7 @@ __fails:
     return null ;
 }
 
+//拷贝string value和拷贝string key是一样的
 static JsonValue *copy_string_value(JsonReader *json_reader)
 {
     JsonValue *json_value = json_value_func.malloc(STRING_VALUE_TYPE) ;
@@ -414,6 +416,7 @@ static int is_int64_over_flow(char *number)
 }
 
 
+//解析数字对象
 static JsonValue *parse_number_object(JsonReader *json_reader)
 {
     //is_number_object保证最起码有一个数字存在
@@ -480,6 +483,8 @@ static JsonValue *parse_number_object(JsonReader *json_reader)
     return null ;
 }
 
+//解析数组对象
+//[null, "test1", {"xxx": "xxxxxx"}, true, false ]
 static JsonValue *parse_array_object(JsonReader *json_reader)
 {
     skip_spaces(json_reader) ;
@@ -497,7 +502,6 @@ static JsonValue *parse_array_object(JsonReader *json_reader)
     if(!json_ay)
         goto __fails ;
     int has_comma = -1 ;
-    //[null, "test1", {"xxx": "xxxxxx"} ]
     while(is_valid(json_reader) && !is_array_object_end(json_reader))
     {
         if(has_comma == 0)
@@ -506,6 +510,7 @@ static JsonValue *parse_array_object(JsonReader *json_reader)
                      "expected ',' at position %d", json_reader ->curr_pos) ;
             goto __fails ;
         }
+        //拷贝每一个值
         v = parse_value(json_reader) ;
         if(!v)
             goto __fails;
@@ -590,22 +595,6 @@ static JsonValue *parse_string_object(JsonReader *json_reader)
     return json_value ;
 }
 
-/*{"key": "value"}
-1首先删除{前面的空格
-2判断是不是{
-3跳过{字符
-4删除{后面的空格
-5判断是不是一个"
-6跳过"
-7拷贝key,直到"
-8跳过"
-9跳过空格
-10拷贝value
-11跳过空格
-12判断是不是,
-13如果是,则跳过,和,后面跟的空格
-*/
-
 static JsonValue *parse_dict_object(JsonReader *json_reader)
 {
     skip_spaces(json_reader) ;
@@ -614,9 +603,9 @@ static JsonValue *parse_dict_object(JsonReader *json_reader)
     //find dict start token '{'
     if(!is_dict_object_start(json_reader))
         return null ;
-    //跳过 '{'
+    //skip '{'
     json_reader ->curr_pos++ ; 
-    //跳过空格
+    //skip space \t
     skip_spaces(json_reader)  ;  
     JsonValue *json_value = json_value_func.malloc(DICT_VALUE_TYPE) ;
     if(!json_value)
@@ -794,7 +783,6 @@ static int parse(JsonReader *json_reader)
     }
     return 1 ;
 }
-
 void print_json_object(JsonValue *json_value, int nspaces) ;
 
 int main(int argc, char *argv[])
