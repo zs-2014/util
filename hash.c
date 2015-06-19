@@ -33,7 +33,7 @@ size_t RSHash(const char *str)
     return v ;
 }
 
-size_t APHash(const char *str)
+size_t aphash(const char *str)
 {
     size_t v = 0 ;
     int flag = 0 ;

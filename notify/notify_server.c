@@ -2,11 +2,14 @@
 #include <event2/buffer.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 #include <errno.h>
 #include <stdio.h>
 
 #include "notify_server.h"
+#include "time_span.h"
 #include "string_util.h"
+#include "log.h"
 #include "config.h"
 #include "json.h"
 
@@ -29,7 +32,7 @@ struct WriteArgs
 {
 };
 
-static struct Server *new_server()
+struct Server *get_server()
 {
     if(!g_server)
     { 
@@ -74,7 +77,7 @@ static evutil_socket_t create_server_socket(const char *host, int port)
 //|content-length#content|
 void do_read(evutil_socket_t fd, short events, void *args)
 {
-    struct Server *server = new_server() ;
+    struct Server *server = get_server() ;
     struct ReadArgs *read_args = (struct ReadArgs *)args ;
     if(events & EV_TIMEOUT)
     {
@@ -103,8 +106,17 @@ void do_read(evutil_socket_t fd, short events, void *args)
         return ;
     }
     evbuffer_add(evbuff, "\0", 1) ;
-    const char *notify_id = make_http_request(server ->base, (const char *)evbuffer_pullup(evbuff)) ;
-    printf("notify_id:%s\n", notify_id) ;
+    const char *json_string = (const char *)evbuffer_pullup(evbuff, evbuffer_get_length(evbuff));
+    const char *notify_id = make_http_request(server ->base, json_string) ;
+    if(notify_id)
+    {
+        int id_len = strlen(notify_id) ;
+        if(write(fd, notify_id, id_len) != id_len)
+        {
+            int err = errno ;
+            WARN("fail to write notify_id:[%s], errmsg:[%s]", notify_id, strerror(err)) ;
+        }
+    }
     //write notify_id
     event_del(read_args ->e) ;
     evbuffer_free(read_args ->evbuff) ;
@@ -125,7 +137,7 @@ void do_accept(evutil_socket_t lsnfd, short events, void *args)
         printf("DEBUG fail to accept: %s\n", strerror(err)) ;
         return ;
     }
-    struct Server *server = new_server() ;
+    struct Server *server = get_server() ;
     struct ReadArgs *read_args = (struct ReadArgs *)calloc(1, sizeof(struct ReadArgs)) ;
     struct evbuffer *evbuff = evbuffer_new() ;
     read_args ->evbuff = evbuff ;
@@ -137,7 +149,7 @@ void do_accept(evutil_socket_t lsnfd, short events, void *args)
     if(timeout)
         tm = atoi(timeout);
     val.tv_sec = tm/1000 ;
-    val.tv_usec = (tm-tm/1000)*1000 ;
+    val.tv_usec = (tm-val.tv_sec)*1000 ;
     event_add(e, timeout ? &val : NULL) ;
 }
 
@@ -145,10 +157,35 @@ void run(const char *cfg_file)
 {
     if(!cfg_file)
         return ; 
-    struct Server *server = new_server() ;
+    struct Server *server = get_server() ;
     struct Config *config = read_config(cfg_file) ;
     if(!config)
         return ;
+    server ->config = config ;
+
+    const char *acc_log_file = get_value(config, NULL, "accesslog") ;
+    if(acc_log_file == NULL)
+        acc_log_file = "stdout" ;
+    const char *err_log_file = get_value(config, NULL, "errorlog") ;
+    if(!err_log_file)
+        err_log_file = "stderr" ;
+    const char *log_level = get_value(config, NULL, "loglevel") ;
+    if(!log_level)
+        log_level = "DEBUG" ;
+    if(install_logger(log_level, acc_log_file, err_log_file) == NULL)
+    {
+        printf("fail to install logger:accesslog:%s, errorlog:%s\n", acc_log_file, err_log_file) ;
+        return ;
+    }
+
+    const char *time_span = get_value(config, NULL, "timespan") ;
+    if(!time_span)
+    {
+        ERROR("invalid config file(%s):expected timespan", cfg_file) ;
+        return ;
+    }
+    server ->time_span = new_time_span(time_span) ;
+
     const char *host = get_value(config, NULL, "host") ;
     const char *port = get_value(config, NULL, "port") ;
     if(!port)
@@ -156,12 +193,6 @@ void run(const char *cfg_file)
     evutil_socket_t sock_fd = create_server_socket(host, atoi(port)) ;
     if(sock_fd == -1)
         return ;
-    struct event_base *base = event_base_new() ;
-    if(!base)
-    {
-        printf("fail to call event_base_new()\n") ;
-        return ;
-    }
     evutil_make_socket_nonblocking(sock_fd) ;
     evutil_make_listen_socket_reuseable(sock_fd) ;
     const char *backlog = get_value(config, NULL, "backlog") ;
@@ -169,18 +200,28 @@ void run(const char *cfg_file)
         backlog = DEFAULT_BACKLOG ;
     if(listen(sock_fd, atoi(backlog)) != 0)
     {
-        printf("fail to listen at %s:%s with backlog:%s\n", host, port, backlog) ;
+        ERROR("fail to listen at %s:%s with backlog:%s\n", host, port, backlog) ;
         return ;
     }
     accept(sock_fd, NULL, NULL) ;
+
+    struct event_base *base = event_base_new() ;
+    if(!base)
+    {
+        ERROR("fail to call event_base_new()\n") ;
+        return ;
+    }
     struct event *e = event_new(base, sock_fd, EV_PERSIST|EV_READ, do_accept, (void *)base) ;
     event_add(e, NULL) ;
+    INFO("start to listen %s:%s", host, port) ;
     event_base_dispatch(base) ;  
     event_base_free(base) ;
+    event_del(e) ;
+    event_free(e) ;
 }
 
 int main(int argc, char *argv[])
 {
-    run(argc == 2 ? argv[1]: "config.ini") ;
+    run(argc == 2 ? argv[1]:"config.ini") ;
     return 0 ;
 }

@@ -30,6 +30,7 @@ extern LinkedList *malloc_linked_list() ;
 extern void deconstruct(LinkedList *llst) ;
 extern void free_linked_list(LinkedList *llst) ;
 extern void *append_to_linked_list(LinkedList *llst, void *value) ;
+extern int count_linked_list(LinkedList *llst) ;
 extern int is_in_linked_list(LinkedList *llst, const void *value) ;
 extern void *find_in_linked_list(LinkedList *llst, const void *value) ;
 extern void *delete_from_linked_list(LinkedList *llst, void *value) ;

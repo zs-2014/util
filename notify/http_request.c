@@ -1,9 +1,13 @@
 #include <stdlib.h>
+#include <time.h>
 #include <string.h>
 
 #include <event2/event.h>
 #include <event2/http.h>
 #include "notify_message.h"
+#include "notify_server.h"
+#include "time_span.h"
+#include "log.h"
 
 #define HTTP_DEFAULT_PORT 80
 #define HTTPS_DEFAULT_PORT 443
@@ -14,20 +18,16 @@
 #define SUCCESS_STR "SUCCESS"
 #define FAIL_STR "FAIL"
 
+//log-format |notify_id|notify_url|notify_data|notify_tmspan|respcd|resp-content|
+#define LOG_MSG_FORMAT "|%s|%s|%s|%u|%d|%s|"
 
-static char *to_upper(char *str)
+struct TimerCBArgs
 {
-    char *tmp = str ;
-    while(*str != '\0')
-    {
-        //'a' - 'A' == 32
-        if(*str >= 'a' && *str <= 'z')
-            *str = *str - 32  ;
-        str++ ;
-    }
-    return tmp ;
-}
+    struct event *e ;
+    struct NotifyMessage *msg ;
+};
 
+static const char *send_http_request(struct event_base *base, struct NotifyMessage *msg) ;
 
 static const char *get_value_from_header(struct evhttp_request *request, const char *key)
 {
@@ -72,24 +72,68 @@ static char *copy_response_body(struct evhttp_request *request)
     return data ;
 }
 
+//时间一到,立马触发
+static void timer_call_back(evutil_socket_t fd, short event, void *args)
+{
+    if(!(event & EV_TIMEOUT))
+        return ;
+    struct TimerCBArgs *cbargs = (struct TimerCBArgs *)args ;
+    evtimer_del(cbargs ->e) ;
+    event_free(cbargs ->e) ;
+    send_http_request(get_server() ->base, cbargs ->msg) ;
+    free(cbargs) ;
+}
+
+static void add_next_notify(struct NotifyMessage *msg)
+{
+    struct Server *server = get_server() ;
+    int tm = next_time_span(server ->time_span, msg ->next_timespan) ;
+    //已经通知完了
+    if(tm == -1)
+    {
+        free_message(msg) ;
+        return ;
+    }
+    struct TimerCBArgs *cbargs = (struct TimerCBArgs *)calloc(1, sizeof(struct TimerCBArgs)) ;
+    struct event *e = evtimer_new(server ->base, timer_call_back, (void *)cbargs) ;
+    if(!e || !cbargs)
+    {
+        ERROR("fail to create timer for:|%s|%s|", msg ->notify_url, msg ->notify_data) ; 
+        free_message(msg) ;
+        free(cbargs) ;
+        free(e) ;
+        return ;
+    }
+    cbargs ->e = e ;
+    cbargs ->msg = msg ;
+    struct timeval val;
+    val.tv_sec = tm/1000;
+    val.tv_usec = (tm-val.tv_sec)*1000 ;
+    msg ->next_timespan++ ;
+    evtimer_add(e, &val) ;
+}
+
+//log-format |notify_id|notify_url|notify_data|notify_tmspan|respcd|resp-content|
 void request_callback(struct evhttp_request *request, void *args)
 {
-    if(!request_is_ok(request))
-    {
-       //request失败了 
-       //log it
-    }
+    struct NotifyMessage *msg = (struct NotifyMessage *)args;
     char *data = copy_response_body(request) ;
-    if(!data)
+    INFO(LOG_MSG_FORMAT, msg ->notify_id, msg ->notify_url, msg ->notify_data, msg ->next_timespan, evhttp_request_get_response_code(request), data?data:"") ;
+    if(!request_is_ok(request) || !data)
     {
-        //no response
-        //log the event
+        add_next_notify(msg) ;
+        free(data) ;
+        return ;
     }
     //log.info(data) ; 
-    if(strcmp(to_upper(data), SUCCESS_STR) != 0)
+    if(strcasecmp(data, SUCCESS_STR) != 0)
     {
-        //not success
+        add_next_notify(msg) ;
+        free(data) ;
+        return ;
     }
+    //如果通知成功了的话，则不需要再通知了
+    free_message(msg) ;
     //delete the notify event from event list
     free(data) ;
 }
@@ -99,15 +143,14 @@ inline static struct evhttp_request *new_request(struct NotifyMessage *msg)
    return evhttp_request_new(request_callback, (void *)msg)  ;
 }
 
-const char *make_http_request(struct event_base *base, const char *json_string)
+static const char *send_http_request(struct event_base *base, struct NotifyMessage *msg)
 {
-    struct NotifyMessage *msg = make_message(json_string) ;
     if(!msg)
         return NULL ;
-
     struct evhttp_uri *evuri = evhttp_uri_parse(msg ->notify_url) ;
     if(!evuri)
     {
+        WARN("invalid notify_url:%s", msg ->notify_url) ;
         free_message(msg) ;
         return NULL ;
     }
@@ -122,7 +165,7 @@ const char *make_http_request(struct event_base *base, const char *json_string)
             port = HTTPS_DEFAULT_PORT;
         else
         {
-            printf("[DEBUG] not supported protocol:%s\n", schema) ;
+            ERROR("not supported protocol:%s notify_url:[%s]notify_data:[%s]", schema, msg ->notify_url, msg ->notify_data) ;
             evhttp_uri_free(evuri) ;
             free_message(msg) ;
             return NULL ;
@@ -141,9 +184,11 @@ const char *make_http_request(struct event_base *base, const char *json_string)
     snprintf(uri, sizeof(uri)-1, "%s?%s", path?path:"/", query?query:"") ;
     evhttp_make_request(conn, req, EVHTTP_REQ_POST, uri) ;
     return msg ->notify_id ;
-    //event_base_dispatch(base) ;
-    //event_base_free(base) ;
-    //evhttp_connection_free(conn) ;
+}
+
+const char *make_http_request(struct event_base *base, const char *json_string)
+{
+    return send_http_request(base, make_message(json_string)) ;
 }
 
 #ifdef HTTP_REQUEST

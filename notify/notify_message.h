@@ -13,7 +13,16 @@ struct NotifyMessage
 };
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void free_message(struct NotifyMessage *msg) ;
 extern struct NotifyMessage *make_message(const char *json_string) ;
 extern struct NotifyMessage *new_message(const char *notify_url, const char *notify_data) ; 
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

@@ -27,10 +27,11 @@ LinkedList *split(const char *buff, char c, int n, int drop_null_str)
     n = (n < 0 ? INT_MAX : n );
     const char *start = buff ;
     const char *end = null;
+    //12,,3,4,5,6,7
     do
     {
         end = strchr(start, c) ; 
-        if(end == start)
+        if(end && end <= start)
         {
             if(!drop_null_str)
                 append_to_linked_list(llst, strdup("\0")) ;
@@ -43,6 +44,8 @@ LinkedList *split(const char *buff, char c, int n, int drop_null_str)
         n-- ;
     }while(end && n > 0) ;
 
+    if(end && n == 0) 
+        append_to_linked_list(llst, strdup(start)) ;
     return llst ;
 }
 
@@ -81,9 +84,17 @@ char *head_strip(char *str, char ch)
     if(!str)
         return null ;
     char *orig = str ; 
-    while(*str != '\0' && *str == ch)
-        str++ ;
-    strcpy(orig, str) ;
+    char *tmp = str ;
+    while(*str != '\0')
+    {
+        if(*str == ch)
+        {
+            str++ ;
+            continue ;
+        }
+        *tmp++ = *str++ ;
+    }
+    *tmp = '\0' ;
     return orig ;
 }
 
@@ -103,6 +114,34 @@ char *strip(char *str, char ch)
         return null ;
     return tail_strip(head_strip(str, ch), ch) ;
 }
+
+char *to_upper(char *str)
+{
+    char *tmp = str ;
+    while(*str != '\0')
+    {
+        //'a' - 'A' == 32
+        if(*str >= 'a' && *str <= 'z')
+            *str = *str - 32  ;
+        str++ ;
+    }
+    return tmp ;
+}
+
+char *to_lower(char *str)
+{
+    if(!str)
+        return str ;
+    char *tmp = str ;
+    while(*str != '\0')
+    {
+        if(*str >= 'A' && *str <= 'Z')
+            *str = *str + 32 ;
+        str++ ;
+    }
+    return tmp ;
+}
+
 
 char *itostr(int n, char *dst)
 {
@@ -138,8 +177,21 @@ char *itostr(int n, char *dst)
 
 
 #ifdef STRING
+void test_split(const char *str, int n)
+{
+    LinkedList *llst = split(str, ',', n, 0) ;
+    char *val = NULL ;
+    for_each_in_linked_list(llst, val)
+    {
+        printf("[%s]", val) ; 
+    }
+    printf("\n") ;
+}
+
 int main(int argc, char *argv[])
 {
+    test_split(argv[1], atoi(argv[2])) ;
+    return 0 ;
     LinkedList *llst = malloc_linked_list() ; 
     llst ->dup_value = strdup ;
     char *str = join(".", llst) ;

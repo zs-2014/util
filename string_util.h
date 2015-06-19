@@ -7,6 +7,8 @@ struct LinkedList ;
 extern "C" {
 #endif
 
+extern char *to_lower(char *str) ;
+extern char *to_upper(char *str) ;
 extern char *strip(char *str, char ch) ;
 extern char *tail_strip(char *str, char ch) ;
 extern char *head_strip(char *str, char ch) ;

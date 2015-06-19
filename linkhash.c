@@ -109,7 +109,7 @@ static void *__set(LinkHashTable *lh_table, void *key, void *value)
     return value ;
 
 }
-void *set(LinkHashTable *lh_table, void *key, void *value)
+void *set_to_link_hash_table(LinkHashTable *lh_table, void *key, void *value)
 {
     if(!lh_table || !key || !value)
         return null ;
@@ -119,7 +119,7 @@ void *set(LinkHashTable *lh_table, void *key, void *value)
     return __set(lh_table, lh_table ->dup_key(key), lh_table ->dup_value(value)) ;
 }
 
-void *get(LinkHashTable *lh_table, const void *key) 
+void *get_from_link_hash_table(LinkHashTable *lh_table, const void *key) 
 {
     if(!lh_table || !key)
         return null ;
@@ -232,8 +232,8 @@ void test_string_set(int cnt)
     for(i=0; i < cnt; i++)
     {
         sprintf(key_buff, "key-test:%u", (size_t)rand()) ;  
-        set(lh_table, key_buff, key_buff) ;
-        char *value = get(lh_table, key_buff) ;
+        set_to_link_hash_table(lh_table, key_buff, key_buff) ;
+        char *value = get_from_link_hash_table(lh_table, key_buff) ;
         if(strcmp(value, key_buff) != 0)
         {
             printf("missing find key:%s\n", key_buff) ;
@@ -254,8 +254,8 @@ void test_set(int cnt)
         *key = i + 1;
         int *value = (int *)malloc(sizeof(int)) ;
         *value = 10 + i ;
-        set(lh_table, key,  value) ;
-        int *old_value = get(lh_table, key) ;
+        set_to_link_hash_table(lh_table, key,  value) ;
+        int *old_value = get_from_link_hash_table(lh_table, key) ;
         if(old_value == null || *value != *old_value)
         {
             printf("missing key:%d value:%d\n", *key, *value) ;
@@ -276,7 +276,7 @@ void test_pop(int cnt)
         *key = i + 1;
         int *value = (int *)malloc(sizeof(int)) ;
         *value = 10 + i ;
-        set(lh_table, key,  value) ;
+        set_to_link_hash_table(lh_table, key,  value) ;
         p[i] = key ;
     }
     for(i=0; i < cnt; i++)
@@ -287,7 +287,7 @@ void test_pop(int cnt)
             printf("missing key:%s\n", *p[i]) ;
         }
         free(value) ;
-        value = get(lh_table, p[i]) ;
+        value = get_from_link_hash_table(lh_table, p[i]) ;
         if(value != null)
         {
             printf("key not pop\n") ;

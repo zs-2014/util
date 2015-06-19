@@ -129,9 +129,9 @@ static Config *parse_config(Config *config, const char *buff)
             continue ;
         value = strip(strip(strdup(e_nm + 1), ' '), '\t') ;
         if(section)    
-            set(section ->lh_table, name, value) ;
+            set_to_link_hash_table(section ->lh_table, name, value) ;
         else
-            set(null_section ->lh_table, name, value) ;
+            set_to_link_hash_table(null_section ->lh_table, name, value) ;
     }
     free_linked_list(llst) ;
     return null ;  
@@ -180,7 +180,7 @@ const char *get_value(Config *config, const char *section_name, const char *key)
     ConfigSection *config_section = find_in_linked_list(config ->llst, section_name) ;
     if(!config_section)
         return null ;
-    return get(config_section ->lh_table, key) ;
+    return get_from_link_hash_table(config_section ->lh_table, key) ;
 }
 
 char *read_value(Config *config, const char *section_name, const char *key, char *value_buff)
@@ -203,7 +203,7 @@ int write_value(Config *config, const char *section_name, const char *key, const
     ConfigSection *config_section = find_in_linked_list(config ->llst, section_name) ;
     if(!config_section)
         return 0 ;
-    return set(config_section ->lh_table, strdup(key), strdup(value)) != null ;
+    return set_to_link_hash_table(config_section ->lh_table, strdup(key), strdup(value)) != null ;
 }
 
 int save_as(Config *config, const char *file_name, const char *mode)
@@ -254,7 +254,7 @@ void test_string_split()
 
 int main(int argc, char *argv[])
 {
-    Config *config = read_config("test.ini") ;
+    Config *config = read_config("notify/config.ini") ;
     ConfigSection *section = null ;
     for_each_in_linked_list(config ->llst, section)
     {

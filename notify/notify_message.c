@@ -4,6 +4,7 @@
 #include <sys/time.h>
 #include "notify_message.h"
 #include "json.h"
+#include "log.h"
 
 
 struct NotifyMessage *new_message(const char *notify_url, const char *notify_data)
@@ -46,7 +47,7 @@ struct NotifyMessage *make_message(const char *json_string)
     json_object *notify_url_obj = json_object_object_get(object, "notify_url") ;
     if(json_object_get_type(notify_url_obj) != json_type_string)
     {
-        printf("DEBUG [%s] notify_url is invalid string\n", json_string) ;
+        WARN("notify_url is invalid string:%s", json_string) ;
         goto __end ;
     }
     const char *notify_url = json_object_to_json_string(notify_url_obj) ;
@@ -54,11 +55,10 @@ struct NotifyMessage *make_message(const char *json_string)
     notify_data_obj = json_object_object_get(object, "notify_data") ;
     if(json_object_get_type(notify_data_obj) != json_type_string)
     {
-        printf("DEBUG [%s] notify_data is invalid string\n", json_string) ;
+        WARN(" notify_data is invalid string:[%s]", json_string) ;
         goto __end ;
     }
     const char *notify_data = json_object_to_json_string(notify_data_obj) ; 
-
     msg = new_message(notify_url, notify_data) ; 
 
 __end:

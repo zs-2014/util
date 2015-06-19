@@ -40,8 +40,8 @@ extern "C" {
 extern void free_link_hash_table(LinkHashTable *lh_table) ;  
 extern LinkHashTable *malloc_link_hash_table(size_t sz) ;
 extern LinkHashTable *rehash(LinkHashTable *lh_table, size_t sz) ;
-extern void * set(LinkHashTable *lh_table, void *key, void *value) ;
-extern void * get(LinkHashTable *lh_table, const void *key) ;
+extern void * set_to_link_hash_table(LinkHashTable *lh_table, void *key, void *value) ;
+extern void * get_from_link_hash_table(LinkHashTable *lh_table, const void *key) ;
 extern void * pop(LinkHashTable *lh_table, const void *key) ;
 int is_in_link_hash_table(const LinkHashTable *lh_table, const void *key) ;
 

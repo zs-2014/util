@@ -3,11 +3,22 @@
 
 struct Config ;
 struct event_base ;
+struct TimeSpan ;
 struct Server
 {
 	struct Config *config ;
     struct event_base *base ;
+    struct TimeSpan *time_span ;
 } ;
 
-extern struct Server *g_server ;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern struct Server *get_server() ;
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
