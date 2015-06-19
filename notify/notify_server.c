@@ -41,6 +41,41 @@ struct Server *get_server()
     return g_server ;
 }
 
+static void free_read_args(struct ReadArgs *args)
+{
+    if(!args)
+        return ;
+
+    if(args ->e)
+    {
+        event_del(args ->e) ;
+        event_free(args ->e) ;
+    }
+
+    if(args ->evbuff)
+        evbuffer_free(args ->evbuff) ;
+
+    free(args) ;
+}
+
+static void free_server()
+{
+    struct Server *server = get_server() ;
+    g_server = NULL ;
+    if(server ->time_span)
+    {
+        free_time_span(server ->time_span) ;
+        server ->time_span = NULL ;
+    }
+
+    if(server ->config)
+    {
+       free_config(server ->config) ;
+       server ->config = NULL ;
+    }
+    free(server) ;
+}
+
 static evutil_socket_t create_server_socket(const char *host, int port)
 {
     if(!host)
@@ -77,18 +112,25 @@ static evutil_socket_t create_server_socket(const char *host, int port)
 //|content-length#content|
 void do_read(evutil_socket_t fd, short events, void *args)
 {
+    DEBUG("%d has event occurs:%d", fd, events) ;
     struct Server *server = get_server() ;
     struct ReadArgs *read_args = (struct ReadArgs *)args ;
     if(events & EV_TIMEOUT)
     {
+        DEBUG("read event is timeout") ;
         //timeout则关闭
-        event_del(read_args ->e) ;
-        evbuffer_free(read_args ->evbuff) ;
+        free_read_args(read_args) ;
         return ;
     }
     struct evbuffer *evbuff = read_args ->evbuff ; 
     //read at most
-    evbuffer_read(evbuff, fd, -1) ;
+    if(evbuffer_read(evbuff, fd, -1) == -1)
+    {
+        int err = errno ;
+        DEBUG("close fd:%d errmsg:%s", fd, strerror(err)) ;
+        free_read_args(read_args) ;
+        return ;
+    }
     struct evbuffer_ptr evbuff_ptr = evbuffer_search(evbuff, "#", 1, NULL) ;
     if(evbuff_ptr.pos == -1)
         return ;
@@ -117,9 +159,11 @@ void do_read(evutil_socket_t fd, short events, void *args)
             WARN("fail to write notify_id:[%s], errmsg:[%s]", notify_id, strerror(err)) ;
         }
     }
-    //write notify_id
-    event_del(read_args ->e) ;
-    evbuffer_free(read_args ->evbuff) ;
+    else
+    {
+        write(fd, "\0", 1) ;
+    }
+    free_read_args(read_args) ;
 }
 
 void do_write(evutil_socket_t fd, short events, void *args)
@@ -131,6 +175,8 @@ void do_accept(evutil_socket_t lsnfd, short events, void *args)
     struct sockaddr_storage cli_addr ;
     socklen_t sock_len = sizeof(cli_addr) ;
     int cli_fd = accept(lsnfd, (struct sockaddr *)& cli_addr, &sock_len) ;
+    char buff[128] = {0} ;
+    DEBUG("receive a connection from: %s", evutil_inet_ntop(AF_INET, buff, (char *)&cli_addr, sock_len)) ;
     int err = errno ;
     if(cli_fd < 0)
     {
@@ -148,8 +194,9 @@ void do_accept(evutil_socket_t lsnfd, short events, void *args)
     int tm = 0 ;
     if(timeout)
         tm = atoi(timeout);
+    DEBUG("timeout is:%d", tm) ;
     val.tv_sec = tm/1000 ;
-    val.tv_usec = (tm-val.tv_sec)*1000 ;
+    val.tv_usec = (tm-val.tv_sec*1000)*1000 ;
     event_add(e, timeout ? &val : NULL) ;
 }
 
@@ -211,13 +258,17 @@ void run(const char *cfg_file)
         ERROR("fail to call event_base_new()\n") ;
         return ;
     }
+    server ->base = base ;
+
     struct event *e = event_new(base, sock_fd, EV_PERSIST|EV_READ, do_accept, (void *)base) ;
     event_add(e, NULL) ;
     INFO("start to listen %s:%s", host, port) ;
     event_base_dispatch(base) ;  
-    event_base_free(base) ;
     event_del(e) ;
     event_free(e) ;
+    event_base_free(base) ;
+    free_server() ;
+    shut_down_loggger() ;
 }
 
 int main(int argc, char *argv[])

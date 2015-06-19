@@ -35,6 +35,11 @@ struct Logger *install_logger(const char *level, const char *access_log_file, co
     return logger ;
 }
 
+void shut_down_loggger()
+{
+    exit_logger() ;
+}
+
 
 #ifdef LOG
 int main(int argc, char *argv[])

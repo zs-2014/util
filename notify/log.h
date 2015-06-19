@@ -29,6 +29,7 @@ extern "C" {
 
 extern struct Logger *install_logger(const char *level, const char *access_log_file, const char *error_log_file) ;
 
+extern void shut_down_loggger() ;
 #ifdef __cplusplus
 }
 #endif
