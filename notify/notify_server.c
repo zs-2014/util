@@ -251,7 +251,9 @@ void run(const char *cfg_file)
         return ;
     }
     accept(sock_fd, NULL, NULL) ;
-
+    const char *deamon_str = get_value(config, NULL, "deamon") ;
+    const char *works_str = get_value(config, NULL, "works") ;
+    const char *threads_str = get_value(config, NULL, "threads") ;
     struct event_base *base = event_base_new() ;
     if(!base)
     {
