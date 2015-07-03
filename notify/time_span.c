@@ -32,16 +32,16 @@ struct TimeSpan *new_time_span(const char *time_span_str)
             continue ;
         val = to_upper(val) ;
         //毫秒为单位
-        if(strstr(val, "ms") != NULL)
+        if(strstr(val, "MS") != NULL)
             time_span ->data[time_span ->curr_sz++] = atoi(val) ; 
         //秒为单位
-        else if(strstr(val, "s") != NULL)
+        else if(strstr(val, "S") != NULL)
             time_span ->data[time_span ->curr_sz++] = atoi(val)*1000 ;
         //分钟
-        else if(strstr(val, "m") != NULL)
-            time_span ->data[time_span ->curr_sz++] = atoi(val)*1000*60;
+        else if(strstr(val, "M") != NULL)
+            time_span ->data[time_span ->curr_sz++] = atoi(val)*1000*60 ;
         //小时
-        else if(strstr(val, "h") != NULL)
+        else if(strstr(val, "H") != NULL)
             time_span ->data[time_span ->curr_sz++] = atoi(val)*1000*3600 ;
         //默认是秒为单位
         else

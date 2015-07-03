@@ -180,6 +180,18 @@ inline static struct evhttp_request *new_request(struct RequestContext *ctx)
    return evhttp_request_new(request_callback, (void *)ctx)  ;
 }
 
+static const char *guess_content_type(const char *content)
+{
+    while(*content == ' ')
+        content++ ;
+    if(*content == '<')
+        return "application/xml; charset=UTF-8" ;
+    else if (*content == '{')
+        return "application/json; charset=UTF-8" ;
+    else
+        return "application/x-www-form-urlencoded" ;
+}
+
 static const char *send_http_request(struct event_base *base, struct RequestContext *ctx)
 {
     if(!ctx)
@@ -222,7 +234,7 @@ static const char *send_http_request(struct event_base *base, struct RequestCont
     struct evbuffer *buffer = evhttp_request_get_output_buffer(req) ;
     evbuffer_add(buffer, msg ->notify_data, msg ->notify_data_len) ;
     struct evkeyvalq *header = evhttp_request_get_output_headers(req) ;
-    evhttp_add_header(header, "Content-Type", "application/json; charset=UTF-8") ;
+    evhttp_add_header(header, "Content-Type", guess_content_type(msg ->notify_data)) ;
     char uri[2048] = {0} ;
     const char *path = evhttp_uri_get_path(evuri) ;
     const char *query = evhttp_uri_get_query(evuri) ;
