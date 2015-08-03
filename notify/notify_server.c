@@ -5,6 +5,7 @@
 #include <time.h>
 #include <errno.h>
 #include <stdio.h>
+#include <signal.h>
 
 #include "notify_server.h"
 #include "time_span.h"
@@ -199,6 +200,34 @@ void do_accept(evutil_socket_t lsnfd, short events, void *args)
     val.tv_usec = (tm-val.tv_sec*1000)*1000 ;
     event_add(e, timeout ? &val : NULL) ;
 }
+
+void sig_handler(int signo)
+{
+    return ;
+}
+
+void sig_child_exit_handler(int signo)
+{
+
+}
+
+void sig_user_handler(int signo)
+{
+    
+}
+
+void install_signal()
+{
+    signal(SIGINT, sig_handler) ;        
+    signal(SIGQUIT, sig_handler) ;
+    signal(SIGPIPE, sig_handler) ;
+    //子进程退出信号
+    signal(SIGCHLD, sig_child_exit_handler) ;
+    //usr信号
+    signal(SIGUSR1, sig_user_handler) ;
+    signal(SIGUSR2, sig_user_handler) ;
+}
+
 
 void run(const char *cfg_file)
 {
