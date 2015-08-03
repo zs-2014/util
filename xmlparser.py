@@ -22,7 +22,8 @@ class XmlDict(object):
     escape_map = {'&lt;': '<',
                   '&gt;': '>',
                   '&quot;': '"',
-                  '&apos': "'"}
+                  '&apos': "'",
+                  '&amp;': '&'}
 
     def __init__(self, xml_str, encode=None):
         self.encode = encode
@@ -44,15 +45,11 @@ class XmlDict(object):
         idx = key_str.find(' ')
         if idx != -1:
             key_str = key_str[:idx]
-        idx = key_str.find(',')
-        if idx != -1:
-            raise XMLFormatException('unexpected , at %s' % key_str)
-        idx = key_str.find('=')
-        if idx != -1:
-            raise XMLFormatException('unexpected = at %s' % key_str)
-        idx = key_str.find('<')
-        if idx != -1:
-            raise XMLFormatException('unexpected < at %s' % key_str)
+
+        for ch in ("'", '=', ',', '"', '<', '>', '&'):
+            idx = key_str.find(ch) 
+            if idx != -1:
+                raise XMLFormatException('unexpected %s at %s' % (ch, key_str))
         return self.escape(key_str)
 
     #1<key>value</key>
