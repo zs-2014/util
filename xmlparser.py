@@ -22,8 +22,7 @@ class XmlDict(object):
     escape_map = {'&lt;': '<',
                   '&gt;': '>',
                   '&quot;': '"',
-                  '&apos': "'",
-                  '&amp;': '&'}
+                  '&apos': "'"}
 
     def __init__(self, xml_str, encode=None):
         self.encode = encode
@@ -37,20 +36,35 @@ class XmlDict(object):
         idx = self.xml_str.find('>', self.pos)
         if idx == -1:
             raise XMLFormatException('expected > at %d, but not found' % self.len)
+        start_lab = None
         #提取key
         key_str = self.xml_str[self.pos:idx]
         self.pos = idx 
 
         key_str = key_str.strip()
         idx = key_str.find(' ')
+        attr_str = ''
         if idx != -1:
+            attr_str = key_str[idx:]
             key_str = key_str[:idx]
+        start_lab = key_str
+        nm_beg_idx = attr_str.find('name="')
+        if nm_beg_idx != -1:
+            nm_end_idx = attr_str.find('"', nm_beg_idx+6)
+            if nm_end_idx == -1:
+                raise XMLFormatException('expected " at %d, but not found' % (self.pos+len(key_str),))
+            key_str = attr_str[nm_beg_idx+6:nm_end_idx]
 
-        for ch in ("'", '=', ',', '"', '<', '>', '&'):
-            idx = key_str.find(ch) 
-            if idx != -1:
-                raise XMLFormatException('unexpected %s at %s' % (ch, key_str))
-        return self.escape(key_str)
+        idx = key_str.find(',')
+        if idx != -1:
+            raise XMLFormatException('unexpected , at %s' % key_str)
+        idx = key_str.find('=')
+        if idx != -1:
+            raise XMLFormatException('unexpected = at %s' % key_str)
+        idx = key_str.find('<')
+        if idx != -1:
+            raise XMLFormatException('unexpected < at %s' % key_str)
+        return self.escape(start_lab), self.escape(key_str)
 
     #1<key>value</key>
     #2<key><![CDATA[value]]></key>
@@ -95,7 +109,7 @@ class XmlDict(object):
             self.pos += 1
             self.skip(" \n\t")
             #<xxx>
-            key = self.parse_key()
+            start_lab, key = self.parse_key()
             #跳过'>'
             self.pos += 1
             self.skip(" \n\t")
@@ -109,8 +123,8 @@ class XmlDict(object):
             end_idx = self.xml_str.find('>', self.pos)
             if end_idx == -1:
                 raise XMLFormatException('expected > at %d' % self.pos)
-            end_key = self.xml_str[self.pos:end_idx].strip()
-            if key != end_key:
+            end_lab = self.xml_str[self.pos:end_idx].strip()
+            if start_lab != end_lab:
                 raise XMLFormatException('not found end lable for <%s>' % key)
             self.pos = end_idx+1
             self.skip(" \n\t")
@@ -174,7 +188,42 @@ def test_xmlparser(text):
     
 if __name__ == '__main__':
     a = '<?xml version="1.0" ?><xml><!-- this is  a test --><amt type="dict"><!-- this is another test --><total_amt> <![CDATA[10 &gt; 9]]> </total_amt><point_amt>1 </point_amt><balance_amt></balance_amt><pay_amt>9&lt;30</pay_amt></amt><pay_seq><item> 1 </item><item>2</item><item>3</item><item1>5</item1></pay_seq><pay_type>1</pay_type><pay_source>1</pay_source></xml>'
-    a = '<xml><appid><![CDATA[wx2421b1c4370ec43b]]></appid><mch_id><![CDATA[10000100]]></mch_id><nonce_str><![CDATA[TeqClE3i0mvn3DrK]]></nonce_str><out_refund_no_0><![CDATA[1415701182]]></out_refund_no_0><out_trade_no><![CDATA[1415757673]]></out_trade_no><refund_count>1</refund_count><refund_fee_0>1</refund_fee_0><refund_id_0><![CDATA[2008450740201411110000174436]]></refund_id_0><refund_status_0><![CDATA[PROCESSING]]></refund_status_0><result_code><![CDATA[SUCCESS]]></result_code><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg><sign><![CDATA[1F2841558E233C33ABA71A961D27561C]]></sign><transaction_id><![CDATA[1008450740201411110005820873]]></transaction_id></xml>'
+    a = '<xml><appid name=""><![CDATA[wx2421b1c4370ec43b]]></appid><mch_id><![CDATA[10000100]]></mch_id><nonce_str><![CDATA[TeqClE3i0mvn3DrK]]></nonce_str><out_refund_no_0><![CDATA[1415701182]]></out_refund_no_0><out_trade_no><![CDATA[1415757673]]></out_trade_no><refund_count>1</refund_count><refund_fee_0>1</refund_fee_0><refund_id_0><![CDATA[2008450740201411110000174436]]></refund_id_0><refund_status_0><![CDATA[PROCESSING]]></refund_status_0><result_code><![CDATA[SUCCESS]]></result_code><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg><sign><![CDATA[1F2841558E233C33ABA71A961D27561C]]></sign><transaction_id><![CDATA[1008450740201411110005820873]]></transaction_id></xml>'
+    a = '''<?xml version="1.0" encoding="utf-8"?>
+<alipay>
+    <is_success>T</is_success>
+    <request>
+        <param name="sign">11ca4b84fa00d22235e16db56f97e0df</param>
+        <param name="_input_charset">utf-8</param>
+        <param name="sign_type">MD5</param>
+        <param name="service">alipay.acquire.refund</param>
+        <param name="out_request_no">6034517927594664774</param>
+        <param name="partner">2088711407753777</param>
+        <param name="refund_amount">0.01</param>
+        <param name="out_trade_no">6034514044151505730</param>
+        <param name="alipay_ca_request">2</param>
+    </request>
+    <response>
+        <alipay>
+        <buyer_logon_id>158****6591</buyer_logon_id>
+        <buyer_user_id>2088612245064480</buyer_user_id>
+        <fund_change>Y</fund_change>
+        <gmt_refund_pay>2015-08-05 10:19:50</gmt_refund_pay>
+        <out_trade_no>6034514044151505730</out_trade_no>
+        <refund_detail_item_list>
+            <TradeFundBill>
+                <amount>0.01</amount>
+                <fund_channel>ALIPAYACCOUNT</fund_channel>
+            </TradeFundBill>
+        </refund_detail_item_list>
+        <refund_fee>0.01</refund_fee>
+        <result_code>SUCCESS</result_code>
+        <trade_no>2015080521001004480010854509</trade_no>
+        </alipay>
+    </response>
+    <sign>51ac015aee25df861df07f59c0fbff82</sign>
+    <sign_type>MD5</sign_type>
+</alipay>'''
     print XmlDict(a).to_dict()
     #test_xmltodict(a)
     #test_xmlparser(a)
