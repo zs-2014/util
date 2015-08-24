@@ -120,7 +120,7 @@ void exit_logger()
     g_lh_table = NULL ;
 }
 
-void disalbe_logger(struct Logger *logger)
+void disable_logger(struct Logger *logger)
 {
     if(!logger)
         return ;
