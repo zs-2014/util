@@ -20,8 +20,9 @@ class SimpleDNSResolver(object):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.sendto(pckt, (self.dns_server, self.port))
         s,_ = sock.recvfrom(1024)
-        #self.print_binary(s, ' ')
+        self.print_binary(s, ' ')
         records = DNSResp(s).parse_response()
+        print records
         #得到cname
         names = [r.get_data() for r in filter(lambda x: x.is_CNAME_record(), records)]
         #print names
@@ -33,4 +34,4 @@ class SimpleDNSResolver(object):
         return ret 
 
 if __name__ == '__main__':
-    SimpleDNSResolver('114.114.114.114', 53).resolve_addr('www.baidu.com')
+    SimpleDNSResolver('114.114.114.114', 53).resolve_addr('www.zhanshuang.com')

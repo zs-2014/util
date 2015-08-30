@@ -15,10 +15,8 @@ class DNSError(Exception):
         self.host_name = unicode_to_utf8(host_name)
         self.server = unicode_to_utf8(server)
         self.port = unicode_to_utf8(port)
-
     def __str__(self):
         return 'unresolved the host[%s] at [%s:%s]' % (self.host_name, self.server, self.port)
-
     def __repr__(self):
         return str(self)
 
@@ -101,11 +99,12 @@ class TornadoDNSCacheResolver(TornadoDNSResolver):
         if not ava_records:
             for _ in range(0, self.max_try_cnt):
                 try:
-                    ava_records = yield  self.getaddrinfo(host_name, self.tmout_per_domain)
+                    ava_records = yield self.getaddrinfo(host_name, self.tmout_per_domain)
                 except socket.timeout, te:
                     pass
                 else:
                     break
+            print 'ava_records', ava_records
             if not ava_records:
                 raise DNSError(host_name, self.server, self.port) 
             self.dns_cache_dict[host_name] = ava_records
@@ -132,7 +131,14 @@ def test():
             cli = AsyncHTTPClient(resolver=TornadoDNSCacheResolver(server='114.114.114.114', port=53))
             rsp = yield cli.fetch('http://www.baidu.com/')
             self.write(rsp.body)
-    app = Application([('/ping', Ping)])
+
+    class Error(RequestHandler):
+        @coroutine
+        def get(self):
+            cli = AsyncHTTPClient(resolver=TornadoDNSCacheResolver(server='114.114.114.114', port=53))
+            rsp = yield cli.fetch('http://www.zhangshuang1.com/')
+            self.write(rsp.body)
+    app = Application([('/ping', Ping), ('/error', Error)])
     app.listen(12345)
     IOLoop.current().start()
 

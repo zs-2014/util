@@ -2,7 +2,6 @@
 import random
 import time
 import struct
-import logging
 import traceback
 import socket
 import sys, os
@@ -122,13 +121,8 @@ Response
 +------------------------------------------------------------------------------------------------------+
 '''
 
-log = logging.getLogger()
-log.setLevel(logging.DEBUG)
-log.addHandler(logging.StreamHandler(sys.stdout))
-
 unicode_to_utf8 = lambda t: t.encode('utf-8') if isinstance(t, unicode) else t
 
-#s = '\x99\x0a\x81\x80\x00\x01\x00\x03\x00\x05\x00\x05\x03\x77\x77\x77\x05\x62\x61\x69\x64\x75\x03\x63\x6f\x6d\x00\x00\x01\x00\x01\xc0\x0c\x00\x05\x00\x01\x00\x00\x02\x58\x00\x0f\x03\x77\x77\x77\x01\x61\x06\x73\x68\x69\x66\x65\x6e\xc0\x16\xc0\x2b\x00\x01\x00\x01\x00\x00\x02\x58\x00\x04\x77\x4b\xd9\x6d\xc0\x2b\x00\x01\x00\x01\x00\x00\x02\x58\x00\x04\x77\x4b\xda\x46\xc0\x2f\x00\x02\x00\x01\x00\x00\x00\x05\x00\x06\x03\x6e\x73\x32\xc0\x2f\xc0\x2f\x00\x02\x00\x01\x00\x00\x00\x05\x00\x06\x03\x6e\x73\x35\xc0\x2f\xc0\x2f\x00\x02\x00\x01\x00\x00\x00\x05\x00\x06\x03\x6e\x73\x31\xc0\x2f\xc0\x2f\x00\x02\x00\x01\x00\x00\x00\x05\x00\x06\x03\x6e\x73\x34\xc0\x2f\xc0\x2f\x00\x02\x00\x01\x00\x00\x00\x05\x00\x06\x03\x6e\x73\x33\xc0\x2f\xc0\x8a\x00\x01\x00\x01\x00\x00\x01\xe7\x00\x04\x3d\x87\xa5\xe0\xc0\x66\x00\x01\x00\x01\x00\x00\x01\xfd\x00\x04\xb4\x95\x85\xf1\xc0\xae\x00\x01\x00\x01\x00\x00\x01\xe1\x00\x04\x3d\x87\xa2\xd7\xc0\x9c\x00\x01\x00\x01\x00\x00\x01\xe7\x00\x04\x73\xef\xd2\xb0\xc0\x78\x00\x01\x00\x01\x00\x00\x01\xfd\x00\x04\x77\x4b\xde\x11'
 class RespError(Exception):
     RESP_OK = 0X0
     REQUEST_DATA_FORMAT_ERROR = 0X01
@@ -137,6 +131,7 @@ class RespError(Exception):
     UNSUPPORT_ERROR = 0X04
     DNS_SERVER_REFUSED = 0X05
     DNS_RESPONSE_FORMAT_ERROR = 0X06
+    UNKNOWN_NAME_ERROR = 0X07
 
     def __init__(self, errcd, msg, *args, **kwargs):
         super(RespError, self).__init__(self, *args, **kwargs)
@@ -285,12 +280,15 @@ class DNSResp(object):
             qdcount = self.qdcount
             #print qdcount
             #如果请求记录存在,则跳过
+            host_name = None
             while qdcount > 0:
-                _ = self.parse_name()   
+                host_name = self.parse_name()   
                 _, _ = struct.unpack('!HH', self.resp[self.offset: self.offset+4])
                 self.offset += 4
                 qdcount -= 1
             
+            if self.ancount <= 0:
+                raise RespError(RespError.UNKNOWN_NAME_ERROR, 'unknown host name[%s]' % host_name)
             ancount = self.ancount+self.nscount+self.arcount
             records = []
             while ancount > 0 and len(self.resp) > self.offset:
@@ -313,8 +311,6 @@ class DNSResp(object):
                 ancount -= 1
             return records
         except struct.error, se:
-            log.warn('unpack the response header(%s,%d)', str(self.resp), len(self.resp))
-            log.warn(traceback.format_exc())
             raise RespError(RespError.DNS_RESPONSE_FORMAT_ERROR, 'dns 服务器响应数据格式错误')
 
 class DNSReq(object):
