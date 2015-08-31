@@ -104,7 +104,6 @@ class TornadoDNSCacheResolver(TornadoDNSResolver):
                     pass
                 else:
                     break
-            print 'ava_records', ava_records
             if not ava_records:
                 raise DNSError(host_name, self.server, self.port) 
             self.dns_cache_dict[host_name] = ava_records
