@@ -297,27 +297,26 @@ def release(dbs, dbnames):
         dbpool[dbnames].release(dbs)
 
 class Test(object):
-    @WithDatabase('qiantai')
+    @WithDatabase('test')
     def test_select_one(self):
         self.db.select_one(table='`order`', where={'order_id': '12345', 'id': 12345}, fields='*')
         self.db.select_one(table='`order`', where={'order_id': ('in', (1,2,'3')), 'id': ('between', (3,4))})
 
-dbconfig = {'qiantai': 
+dbconfig = {'test': 
                       {'master': 
-                                {'db': 'qiantai',
+                                {'db': 'test',
                                 'host': '172.100.101.106',
                                 'port': 3306,
-                                'user': 'qf',
-                                'conn': 12,
+                                'user': 'test',
                                 'passwd': '123456',
                                 'charset': 'utf8',
                                 'timeout': 10}, 
                         'conn': 1,
                         'slave': 
-                                {'db': 'qiantai',
+                                {'db': 'test',
                                 'host': '172.100.101.106',
                                 'port': 3306,
-                                'user': 'qf',
+                                'user': 'test',
                                 'passwd': '123456',
                                 'charset': 'utf8',
                                 'timeout': 10}}
