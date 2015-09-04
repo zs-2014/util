@@ -19,7 +19,7 @@ def reconnect_mysql(func):
         try:
             return func(self, *args, **kwargs)
         except OperationalError, e:
-            #self.log.warn(traceback.format_exc())
+            self.log.warn(traceback.format_exc())
             #reconnect it
             if e.args[0] == 2006:
                 self.reconnect()
@@ -328,6 +328,7 @@ class Test(object):
     @WithDatabase(('test', 'test1'))
     def test_select_one(self):
         import datetime
+        time.sleep(300)
         print self.db['test'].select_one(table='`test`', where=None, fields='count(*) c')
         print self.db['test1'].select_one(table='`test`', where=None, fields='count(*) c', is_dict=False)
         print self.db['test'].select_one(table='`test`', where={'or': {'create_time': datetime.datetime.now()}}, fields='count(*) c')
@@ -341,7 +342,7 @@ class Test(object):
         print self.db.delete(table='test', where={'id': ('between', (1,4))})
         print self.db.delete(table='test', where={'id': 5})
 
-    @WithDatabase(('test', 'test2'))
+    @WithDatabase(('test', 'test1'))
     def test_select(self):
         print self.db['test'].select(table='`test`', where=None, fields='count(*) c')
         print self.db['test1'].select(table='`test`', where=None, fields='count(*) c')
