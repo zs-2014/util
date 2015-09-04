@@ -19,7 +19,7 @@ def reconnect_mysql(func):
         try:
             return func(self, *args, **kwargs)
         except OperationalError, e:
-            self.log.warn(traceback.format_exc())
+            #self.log.warn(traceback.format_exc())
             #reconnect it
             if e.args[0] == 2006:
                 self.reconnect()
@@ -105,11 +105,7 @@ class Connection(object):
             cur =  self.conn.cursor(SSDictCursor)
         else:
             cur = self.conn.cursor()
-        #if args is not None:
-        #ret = cur.execute(sql % self.escape(args))
         ret = cur.execute(sql, args)
-        #else:
-        #    ret = cur.execute(sql)
         result = cur.fetchall()
         cur.close()
         return ret, result
@@ -138,7 +134,9 @@ class Connection(object):
         else:
             return None
 
-    def dict2sql(self, d, sp):
+    def dict2sql(self, d, sp, escape_string=None, escape=None):
+        escape_string = escape_string or self.escape_string
+        escape = escape or self.escape
         sql = [] 
         or_sql = []
         list_type = (types.ListType, types.TupleType)
@@ -148,22 +146,22 @@ class Connection(object):
             if isinstance(v, list_type):
                 op, value = v[0].upper(), v[1]
                 if op == 'BETWEEN':
-                    sql.append('(%s BETWEEN %s AND %s)' % (self.escape_string(k), 
-                                                         self.escape(value[0]), 
-                                                         self.escape(value[1])))
+                    sql.append('(%s BETWEEN %s AND %s)' % (escape_string(k), 
+                                                         escape(value[0]), 
+                                                         escape(value[1])))
                 elif isinstance(value, list_type):
                     #k in (1,2,3,4)
-                    sql.append('%s %s (%s)' % (self.escape_string(k), 
-                                                 self.escape_string(op), 
-                                                 ','.join([self.escape(vv) for vv in value])))
+                    sql.append('%s %s (%s)' % (escape_string(k), 
+                                               escape_string(op), 
+                                                 ','.join([escape(vv) for vv in value])))
                 else:
-                    sql.append('%s %s %s' % (self.escape_string(k),
-                                              self.escape_string(op),
-                                              self.escape(value)))
+                    sql.append('%s %s %s' % (escape_string(k),
+                                              escape_string(op),
+                                              escape(value)))
             elif k.upper() == '`OR`' and isinstance(v, types.DictType):
                 or_sql.append('%s' % self.where2sql(v))
             else:
-                sql.append('%s=%s' % (self.escape_string(k), self.escape(v)))
+                sql.append('%s=%s' % (escape_string(k), escape(v)))
         if len(or_sql) == 0:
             return sp.join(sql)
         elif len(sql) == 0:
@@ -171,10 +169,52 @@ class Connection(object):
         else:
             return '%s OR (%s)' % (sp.join(sql), sp.join(or_sql))
 
-    def where2sql(self, where):
+    def where2sql(self, where, escape_string=None, escape=None):
         if not where:
             return '1'
-        return self.dict2sql(where, ' AND ')
+        return self.dict2sql(where, ' AND ', escape_string, escape)
+
+    def format_table_dict(self, key_table, value_table, d):
+        ret_d = {}
+        key_table = unicode_to_utf8(key_table)
+        value_table = unicode_to_utf8(value_table)
+        format_value = lambda v: v if value_table is None else '%s.%s' %(value_table, self.escape_string(v))
+        format_key = lambda k: k if key_table is None else '%s.%s' %(key_table, self.escape_string(k))
+        for k, v in d.iteritems():
+            new_k = format_key(k) 
+            if isinstance(v, types.DictType):
+                ret_d[new_k] = self.add_prefix_dict(table, v)
+            else:
+                ret_d[new_k] = format_value(v) 
+        return ret_d
+
+    def select_join(self, tables, wheres, relation, way, fields='*')
+        tb_nm = tables[0] 
+        where = self.format_table_dict(tb_nm, None, wheres[0])
+        where_sql = self.where2sql(where)
+        join_tb_nm = tables[1]
+        join_where = self.format_table_dict(join_tb_nm, None, wheres[1])
+        join_where_sql = self.where2sql(join_where)
+        escape = unicode_to_utf8
+        escape_string = unicode_to_utf8
+        relation = self.format_table_dict(tb_nm, join_tb_nm, relation)
+        relation_sql = self.where2sql(relation, escape_string, escape)
+        sql = 'SELECT %s FROM %s %s JOIN %s ON %s WHERE %s AND %s' % (self.escape_string(fields),
+                                                                            tb_nm, way, join_tb_nm, 
+                                                                            relation_sql,
+                                                                            where_sql, lft_where_sql)
+        _, result = self.execute(sql)
+        return result 
+
+
+    def select_left_join(self, tables, wheres, relation, fields='*'):
+        return self.select_join(tables, wheres, relation, 'LEFT', fields)
+
+    def select_right_join(self, tables, wheres, relation, fields='*'):
+        return self.select_join(tables, wheres, relation, 'RIGHT', fields)
+
+    def select_inner_join(self, tables, wheres, relation, fields='*'):
+        return self.select_join(tables, wheres, relation, 'INNER', fields)
 
     def update(self, table, where, values):
         sql = 'UPDATE %s SET %s WHERE %s' % (self.escape_string(table),
@@ -328,7 +368,6 @@ class Test(object):
     @WithDatabase(('test', 'test1'))
     def test_select_one(self):
         import datetime
-        time.sleep(300)
         print self.db['test'].select_one(table='`test`', where=None, fields='count(*) c')
         print self.db['test1'].select_one(table='`test`', where=None, fields='count(*) c', is_dict=False)
         print self.db['test'].select_one(table='`test`', where={'or': {'create_time': datetime.datetime.now()}}, fields='count(*) c')
@@ -342,7 +381,7 @@ class Test(object):
         print self.db.delete(table='test', where={'id': ('between', (1,4))})
         print self.db.delete(table='test', where={'id': 5})
 
-    @WithDatabase(('test', 'test1'))
+    @WithDatabase(('test', 'test2'))
     def test_select(self):
         print self.db['test'].select(table='`test`', where=None, fields='count(*) c')
         print self.db['test1'].select(table='`test`', where=None, fields='count(*) c')
