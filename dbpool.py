@@ -134,14 +134,14 @@ class Connection(object):
         else:
             return None
 
-    def dict2sql(self, d, sp, escape_string=None, escape=None):
+    def dict2sql(self, d, sp, escape_string=None, escape=None, add_escape_ch=True):
         escape_string = escape_string or self.escape_string
         escape = escape or self.escape
         sql = [] 
         or_sql = []
         list_type = (types.ListType, types.TupleType)
         for k, v in d.iteritems():
-            if not k.startswith('`'):
+            if not k.startswith('`') and add_escape_ch:
                 k = '`%s`' % k
             if isinstance(v, list_type):
                 op, value = v[0].upper(), v[1]
@@ -158,8 +158,8 @@ class Connection(object):
                     sql.append('%s %s %s' % (escape_string(k),
                                               escape_string(op),
                                               escape(value)))
-            elif k.upper() == '`OR`' and isinstance(v, types.DictType):
-                or_sql.append('%s' % self.where2sql(v))
+            elif k.upper() in ('`OR`', 'OR') and isinstance(v, types.DictType):
+                or_sql.append('%s' % self.where2sql(v, escape_string, escape, add_escape_ch))
             else:
                 sql.append('%s=%s' % (escape_string(k), escape(v)))
         if len(or_sql) == 0:
@@ -169,40 +169,52 @@ class Connection(object):
         else:
             return '%s OR (%s)' % (sp.join(sql), sp.join(or_sql))
 
-    def where2sql(self, where, escape_string=None, escape=None):
+    def where2sql(self, where, escape_string=None, escape=None, add_escape_ch=True):
         if not where:
             return '1'
-        return self.dict2sql(where, ' AND ', escape_string, escape)
+        return self.dict2sql(where, ' AND ', escape_string, escape, add_escape_ch)
 
     def format_table_dict(self, key_table, value_table, d):
+        if not d:
+            return None
         ret_d = {}
         key_table = unicode_to_utf8(key_table)
         value_table = unicode_to_utf8(value_table)
-        format_value = lambda v: v if value_table is None else '%s.%s' %(value_table, self.escape_string(v))
-        format_key = lambda k: k if key_table is None else '%s.%s' %(key_table, self.escape_string(k))
+        format_value = lambda v1: v1 if value_table is None else '%s.`%s`' % (value_table, self.escape_string(v1))
+        format_key = lambda k1: k1 if key_table is None else '%s.`%s`' % (key_table, self.escape_string(k1))
+        list_type = (types.ListType, types.TupleType)
         for k, v in d.iteritems():
             new_k = format_key(k) 
-            if isinstance(v, types.DictType):
-                ret_d[new_k] = self.add_prefix_dict(table, v)
+            if k.upper() == 'OR' and isinstance(v, types.DictType):
+                ret_d[k] = self.format_table_dict(key_table, value_table, v)
+            elif isinstance(v, types.DictType):
+                ret_d[new_k] = self.format_table_dict(key_table, value_table, v)
+            elif isinstance(v, list_type):
+                #op, value
+                v = v[1]
+                if isinstance(v, list_type):
+                    ret_d[new_k] = [format_value(vv) for vv in v] 
+                else:
+                    ret_d[new_k] = format_value(v)
             else:
                 ret_d[new_k] = format_value(v) 
         return ret_d
 
-    def select_join(self, tables, wheres, relation, way, fields='*')
+    def select_join(self, tables, wheres, relation, way, fields='*'):
         tb_nm = tables[0] 
         where = self.format_table_dict(tb_nm, None, wheres[0])
-        where_sql = self.where2sql(where)
+        where_sql = self.where2sql(where, add_escape_ch=False)
         join_tb_nm = tables[1]
         join_where = self.format_table_dict(join_tb_nm, None, wheres[1])
-        join_where_sql = self.where2sql(join_where)
+        join_where_sql = self.where2sql(join_where, add_escape_ch=False)
         escape = unicode_to_utf8
         escape_string = unicode_to_utf8
         relation = self.format_table_dict(tb_nm, join_tb_nm, relation)
-        relation_sql = self.where2sql(relation, escape_string, escape)
+        relation_sql = self.where2sql(relation, escape_string, escape, False)
         sql = 'SELECT %s FROM %s %s JOIN %s ON %s WHERE %s AND %s' % (self.escape_string(fields),
                                                                             tb_nm, way, join_tb_nm, 
                                                                             relation_sql,
-                                                                            where_sql, lft_where_sql)
+                                                                            where_sql, join_where_sql)
         _, result = self.execute(sql)
         return result 
 
@@ -365,52 +377,127 @@ def release(dbs, dbnames):
         dbpool[dbnames].release(dbs)
 
 class Test(object):
+
     @WithDatabase(('test', 'test1'))
     def test_select_one(self):
-        import datetime
-        print self.db['test'].select_one(table='`test`', where=None, fields='count(*) c')
-        print self.db['test1'].select_one(table='`test`', where=None, fields='count(*) c', is_dict=False)
-        print self.db['test'].select_one(table='`test`', where={'or': {'create_time': datetime.datetime.now()}}, fields='count(*) c')
-        print self.db['test1'].select_one(table='`test`', where={'or': {'create_time': None}}, fields='count(*) c', is_dict=False)
+        where = None
+        ret = self.db['test'].select_one(table='`test`', where=where, fields='count(*) c')
+        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='count(*) c')
+        print ret, ret == ret1
+
+        where = {'goods_name': '测试', 'create_time': datetime.datetime.now()}
+        ret = self.db['test'].select_one(table='`test`', where=where, fields='goods_name, create_time')
+        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='goods_name, create_time')
+        print ret, ret == ret1
+
+        where = {'goods_name': '测试', 
+                 'create_time': ('between', (datetime.datetime.now()+datetime.timedelta(seconds=-10), datetime.datetime.now())), 
+                 'total_amt': 1, 'fee': 1}
+        ret = self.db['test'].select_one(table='`test`', where=where, fields='goods_name, create_time')
+        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='goods_name, create_time')
+        print ret, ret == ret1
+
+        where = {'goods_name': '测试', 'total_amt': 1, 'OR': {'fee': 1, 'create_time': datetime.datetime.now()}}
+        ret = self.db['test'].select_one(table='`test`', where=where, fields='goods_name, create_time')
+        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='goods_name, create_time')
+        print ret, ret == ret1
+
+        where = {'goods_name': '测试', 
+                 'join_date': datetime.date.today(), 'fee': 1, 
+                 'total_amt': ('in', (1,2,3,4,5,6,7,10))}
+        ret = self.db['test'].select_one(table='`test`', where=where, fields='goods_name, join_date')
+        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='goods_name, join_date')
+        print ret, ret == ret1
+
+        where = {'goods_name': '测试', 'join_date': datetime.date.today(), 'fee': ('not in', (1, 2, 3)), 'total_amt': 10}
+        ret = self.db['test'].select_one(table='`test`', where=where, fields='goods_name, join_date')
+        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='goods_name, join_date')
+        print ret, ret == ret1
+
+        where = {'goods_name': ('!=', '测试'), 'join_date': datetime.date.today(), 'fee': ('not in', (1, 2, 3)), 'total_amt': 10}
+        ret = self.db['test'].select_one(table='`test`', where=where, fields='goods_name, join_date')
+        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='goods_name, join_date')
+        print ret, ret == ret1
 
     @WithDatabase('test')
     def test_delete(self):
-        import datetime
         print self.db.delete(table='test', where={'create_time': ('>=', datetime.datetime.now()),
-                                                  'or': {'goods_name': '美白'}})
+                                                  'or': {'goods_name': '测试'}})
         print self.db.delete(table='test', where={'id': ('between', (1,4))})
         print self.db.delete(table='test', where={'id': 5})
+        print self.db.delete(table='test', where=None)
+        print self.db.delete(table='test1', where=None)
 
-    @WithDatabase(('test', 'test2'))
+    @WithDatabase(('test', 'test1'))
     def test_select(self):
-        print self.db['test'].select(table='`test`', where=None, fields='count(*) c')
-        print self.db['test1'].select(table='`test`', where=None, fields='count(*) c')
-        print self.db['test'].select(table='`test`', where=None, fields='count(*) c', is_dict=False)
-        print self.db['test1'].select(table='`test`', where=None, fields='count(*) c', is_dict=False)
+        where = None
+        ret = self.db['test'].select(table='`test`', where=where, fields='count(*) c')
+        ret1 = self.db['test1'].select(table='`test`', where=where, fields='count(*) c')
+        print ret, ret == ret1
+
+        where = {'goods_name': '测试', 'create_time': datetime.datetime.now()}
+        ret = self.db['test'].select(table='`test`', where=where, fields='goods_name, create_time')
+        ret1 = self.db['test1'].select(table='`test`', where=where, fields='goods_name, create_time')
+        print ret, ret == ret1
+
+        where = {'goods_name': '测试', 
+                 'create_time': ('between', (datetime.datetime.now()+datetime.timedelta(seconds=-10), datetime.datetime.now())), 
+                 'total_amt': 1, 'fee': 1}
+        ret = self.db['test'].select(table='`test`', where=where, fields='goods_name, create_time')
+        ret1 = self.db['test1'].select(table='`test`', where=where, fields='goods_name, create_time')
+        print ret, ret == ret1
+
+        where = {'goods_name': '测试', 'total_amt': 1, 'OR': {'fee': 1, 'create_time': datetime.datetime.now()}}
+        ret = self.db['test'].select(table='`test`', where=where, fields='goods_name, create_time')
+        ret1 = self.db['test1'].select(table='`test`', where=where, fields='goods_name, create_time')
+        print ret, ret == ret1
+
+        where = {'goods_name': '测试', 
+                 'join_date': datetime.date.today(), 'fee': 1, 
+                 'total_amt': ('in', (1,2,3,4,5,6,7,10))}
+        ret = self.db['test'].select(table='`test`', where=where, fields='goods_name, join_date')
+        ret1 = self.db['test1'].select(table='`test`', where=where, fields='goods_name, join_date')
+        print ret, ret == ret1
 
     @WithDatabase('test')
     def test_update(self):
         print self.db.update(table='test', where={'id': 1}, values={'goods_name': 'update 测试'})
-        print self.db.update(table='test', where={'id': 9, 'fee': 0.75, 'or': {'total_amt': 1}}, 
-                                           values={'total_amt': 100, 'create_time': datetime.datetime.now()})
-        print self.db.update(table='test', where={'goods_name': ('!=', None)}, values={'goods_name': '测试'})
+        print self.db.update(table='test', 
+                             where={'goods_name': ('in', ('insert 测试', 'update 测试'))}, 
+                             values={'goods_name': 'update 测试'})
+        print self.db.update(table='test', where={'fee': 0.75, 'or': {'total_amt': 1}}, 
+                                           values={'total_amt': 100, 'goods_name': 'total_amt 测试'})
+        print self.db.update(table='test', where={'goods_name': ('!=', '')}, values={'goods_name': '测试'})
+
     @WithDatabase('test')
     def test_insert(self):
-        import datetime
-        values1 = {'create_time': datetime.datetime.now()}
-        values2 = {'create_time': datetime.datetime.now(), 'fee': 0.75, 'total_amt': 1, 'goods_name': '美白'}
-        print self.db.insert(table='test', values=values1)
-        print self.db.insert(table='test', values=values2)
-        try:
-            print self.db.begin_transaction()
-            values3 = {'create_time': datetime.datetime.now(), 'fee': 0.75, 'total_amt': 1, 'goods_name': 'transaction测试'}
-            err_values = {'id': 1, 'create_time': datetime.datetime.now(), 'fee': 0.75, 'total_amt': 1, 'goods_name': 'transaction测试'}
-            print self.db.insert(table='test', values=values3)
-            print self.db.insert(table='test', values=err_values)
-        except:
-            pass
-        finally:
-            print self.db.end_transaction() 
+        values = {'goods_name': '测试', 'join_date': datetime.date.today(), 'create_time': datetime.datetime.now()} 
+        values['total_amt'] = 12
+        values['fee'] = 1
+        self.db.insert(table='test', values=values)
+        values['total_amt'] = 1
+        values['fee'] = 5
+        self.db.insert(table='test', values=values)
+        values['goods_name'] = 'insert 测试'
+        self.db.insert(table='test', values=values)
+        values['create_time'] = datetime.datetime.now()-datetime.timedelta(seconds=60)
+        values['goods_name'] = '测试'
+        self.db.insert(table='test', values=values)
+        values['fee'] = 0.75
+        self.db.insert(table='test', values=values)
+
+        values = {'goods_name': '测试', 'join_date': datetime.date.today(), 'create_time': datetime.datetime.now()} 
+        values['total_amt'] = 12
+        values['fee'] = 1
+        print self.db.insert(table='test1', values=values)
+        values['total_amt'] = 1
+        values['fee'] = 5
+        print self.db.insert(table='test1', values=values)
+        print self.db.insert(table='test1', values=values)
+        values['create_time'] = datetime.datetime.now()-datetime.timedelta(seconds=60)
+        print self.db.insert(table='test1', values=values)
+        values['fee'] = 0.75
+        self.db.insert(table='test1', values=values)
 
     @WithDatabase('test')
     def test_get(self):
@@ -420,12 +507,21 @@ class Test(object):
         print self.db.get(sql, (1,2,3))
         sql = 'select * from test where create_time=%s'
         print self.db.get(sql, datetime.datetime.now())
+
     @WithDatabase('test')
     def test_query(self):
         sql = 'select * from test where id in (1,8,9)'
         print self.db.query(sql)
         sql = 'select * from test where id in (%s, %s, %s)'
         print self.db.query(sql, args=(1, 8, 9))
+
+    @WithDatabase('test')
+    def test_select_join(self):
+        wheres = ({'goods_name': '测试'}, {'goods_name': '测试', 'total_amt': 1}) 
+        relation = {'goods_name': 'goods_name', 'OR': {'fee': 'fee'}}
+        print self.db.select_left_join(tables=('test', 'test1'), wheres=wheres, relation=relation)
+        print self.db.select_left_join(tables=('test1', 'test'), wheres=wheres, relation=relation)
+        print self.db.select_right_join(tables=('test1', 'test'), wheres=wheres, relation=relation)
 
 dbconfig = {'test': 
                       {'master': 
@@ -470,12 +566,11 @@ install_database(dbconfig)
 
 if __name__ == '__main__':
     t = Test() 
-    try:
-        t.test_select()
-    except:
-        print traceback.format_exc()
-    #t.test_insert()
-    t.test_select_one()
+    t.test_insert()
+    #t.test_select()
+    #t.test_select_one()
+    t.test_select_join()
+    t.test_delete()
     #t.test_get()
     #t.test_query()
     #t.test_update()
