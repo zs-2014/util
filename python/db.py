@@ -200,7 +200,7 @@ class Connection(object):
                 ret_d[new_k] = format_value(v) 
         return ret_d
 
-    def select_join(self, tables, wheres, relation, way, fields='*'):
+    def select_join(self, tables, wheres, relation, way, other=None, fields='*'):
         tb_nm = tables[0] 
         where = self.format_table_dict(tb_nm, None, wheres[0])
         where_sql = self.where2sql(where, add_escape_ch=False)
@@ -211,27 +211,29 @@ class Connection(object):
         escape_string = unicode_to_utf8
         relation = self.format_table_dict(tb_nm, join_tb_nm, relation)
         relation_sql = self.where2sql(relation, escape_string, escape, False)
-        sql = 'SELECT %s FROM %s %s JOIN %s ON %s WHERE %s AND %s' % (self.escape_string(fields),
+        sql = 'SELECT %s FROM %s %s JOIN %s ON %s WHERE %s AND %s %s' % (self.escape_string(fields),
                                                                             tb_nm, way, join_tb_nm, 
                                                                             relation_sql,
-                                                                            where_sql, join_where_sql)
+                                                                            where_sql, join_where_sql,
+                                                                            '' if other is None else other)
         _, result = self.execute(sql)
         return result 
 
 
-    def select_left_join(self, tables, wheres, relation, fields='*'):
-        return self.select_join(tables, wheres, relation, 'LEFT', fields)
+    def select_left_join(self, tables, wheres, relation, other=None, fields='*'):
+        return self.select_join(tables, wheres, relation, 'LEFT', other, fields)
 
-    def select_right_join(self, tables, wheres, relation, fields='*'):
-        return self.select_join(tables, wheres, relation, 'RIGHT', fields)
+    def select_right_join(self, tables, wheres, relation, other=None, fields='*'):
+        return self.select_join(tables, wheres, relation, 'RIGHT', other, fields)
 
-    def select_inner_join(self, tables, wheres, relation, fields='*'):
-        return self.select_join(tables, wheres, relation, 'INNER', fields)
+    def select_inner_join(self, tables, wheres, relation, other=None, fields='*'):
+        return self.select_join(tables, wheres, relation, 'INNER', other, fields)
 
-    def update(self, table, where, values):
-        sql = 'UPDATE %s SET %s WHERE %s' % (self.escape_string(table),
+    def update(self, table, where, values, other=None):
+        sql = 'UPDATE %s SET %s WHERE %s %s' % (self.escape_string(table),
                                              self.dict2sql(values, ','),
-                                             self.where2sql(where))
+                                             self.where2sql(where),
+                                             '' if other is None else other)
         ret, _ = self.execute(sql, is_dict=False)
         return ret
 
@@ -251,22 +253,25 @@ class Connection(object):
         ret, _ = self.execute(sql, is_dict=False)
         return ret
                                                   
-    def delete(self, table, where):
-        sql = 'DELETE FROM %s WHERE %s' % (self.escape_string(table),
-                                           self.where2sql(where)) 
+    def delete(self, table, where, other=None):
+        sql = 'DELETE FROM %s WHERE %s %s' % (self.escape_string(table),
+                                           self.where2sql(where), 
+                                           '' if other is None else other) 
         ret, _ = self.execute(sql, is_dict=False)
         return ret
 
-    def select(self, table, where, fields='*', is_dict=True):
-        sql = 'SELECT %s FROM %s WHERE %s' % (self.escape_string(fields),
+    def select(self, table, where, other=None, fields='*', is_dict=True):
+        sql = 'SELECT %s FROM %s WHERE %s %s' % (self.escape_string(fields),
                                               self.escape_string(table),
-                                              self.where2sql(where))
+                                              self.where2sql(where), 
+                                              '' if other is None else other)
         return self.query(sql, is_dict=is_dict)
                                               
-    def select_one(self, table, where, fields='*', is_dict=True):
-        sql = 'SELECT %s FROM %s WHERE %s' % (self.escape_string(fields),
-                                                      self.escape_string(table),
-                                                      self.where2sql(where))
+    def select_one(self, table, where, other=None, fields='*', is_dict=True):
+        sql = 'SELECT %s FROM %s WHERE %s %s' % (self.escape_string(fields),
+                                              self.escape_string(table),
+                                              self.where2sql(where),
+                                              '' if other is None else other)
         return self.get(sql, is_dict=is_dict)
 
 class ConnectionProxy(object):
@@ -570,8 +575,8 @@ if __name__ == '__main__':
     t.test_select()
     t.test_select_one()
     t.test_select_join()
-    t.test_delete()
-    #t.test_get()
-    #t.test_query()
-    #t.test_update()
     #t.test_delete()
+    t.test_get()
+    t.test_query()
+    t.test_update()
+    t.test_delete()
