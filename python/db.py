@@ -33,6 +33,7 @@ class Connection(object):
         if not self.log.handlers:
             logging.basicConfig()
             self.log = logging.getLogger()
+            self.log.setLevel(logging.DEBUG)
 
         self.config = config
         self.auto_commit = autocommit
@@ -99,7 +100,7 @@ class Connection(object):
 
     @reconnect_mysql
     def execute(self, sql, args=None, is_dict=True):
-        print sql
+        self.log.debug(sql)
         if is_dict:
             cur =  self.conn.cursor(SSDictCursor)
         else:
@@ -114,15 +115,6 @@ class Connection(object):
         return result
     
     def get(self, sql, args=None, is_dict=True):
-        #if isinstance(args, types.DictType):
-        #    args = self.escape(args)
-        #elif isinstance(args, (types.ListType, types.TupleType)):
-        #    args = [self.escape(s) if isinstance(s, basestring) else s for s in args]
-        #elif isinstance(args, basestring):
-        #    args = self.escape(args)
-        #elif args is not None:
-        #    args = self.escape(args)
-        #args = self.escape(args)
         if args is not None:
             sql = '%s limit 1' % (sql % self.escape(args))
         else:
@@ -318,7 +310,7 @@ class DBPool(object):
         
     def release(self, conn):
         with self.lock:
-            old_cnt = self.dbs
+            old_cnt = len(self.dbs)
             self.dbs.append(conn)
             if not old_cnt:
                 self.cond.notify()
@@ -335,7 +327,7 @@ class WithDatabase(object):
                 ret = func(ins, *args, **kwargs)
                 return ret
             finally:
-                ins.db = None
+                delattr(ins, 'db')
                 release(dbs, self.dbnames)
         return _
 
@@ -380,202 +372,3 @@ def release(dbs, dbnames):
     else:
         dbpool[dbnames].release(dbs)
 
-class Test(object):
-
-    @WithDatabase(('test', 'test1'))
-    def test_select_one(self):
-        where = None
-        ret = self.db['test'].select_one(table='`test`', where=where, fields='count(*) c')
-        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='count(*) c')
-        print ret, ret == ret1
-
-        where = {'goods_name': '测试', 'create_time': datetime.datetime.now()}
-        ret = self.db['test'].select_one(table='`test`', where=where, fields='goods_name, create_time')
-        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='goods_name, create_time')
-        print ret, ret == ret1
-
-        where = {'goods_name': '测试', 
-                 'create_time': ('between', (datetime.datetime.now()+datetime.timedelta(seconds=-10), datetime.datetime.now())), 
-                 'total_amt': 1, 'fee': 1}
-        ret = self.db['test'].select_one(table='`test`', where=where, fields='goods_name, create_time')
-        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='goods_name, create_time')
-        print ret, ret == ret1
-
-        where = {'goods_name': '测试', 'total_amt': 1, 'OR': {'fee': 1, 'create_time': datetime.datetime.now()}}
-        ret = self.db['test'].select_one(table='`test`', where=where, fields='goods_name, create_time')
-        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='goods_name, create_time')
-        print ret, ret == ret1
-
-        where = {'goods_name': '测试', 
-                 'join_date': datetime.date.today(), 'fee': 1, 
-                 'total_amt': ('in', (1,2,3,4,5,6,7,10))}
-        ret = self.db['test'].select_one(table='`test`', where=where, fields='goods_name, join_date')
-        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='goods_name, join_date')
-        print ret, ret == ret1
-
-        where = {'goods_name': '测试', 'join_date': datetime.date.today(), 'fee': ('not in', (1, 2, 3)), 'total_amt': 10}
-        ret = self.db['test'].select_one(table='`test`', where=where, fields='goods_name, join_date')
-        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='goods_name, join_date')
-        print ret, ret == ret1
-
-        where = {'goods_name': ('!=', '测试'), 'join_date': datetime.date.today(), 'fee': ('not in', (1, 2, 3)), 'total_amt': 10}
-        ret = self.db['test'].select_one(table='`test`', where=where, fields='goods_name, join_date')
-        ret1 = self.db['test1'].select_one(table='`test`', where=where, fields='goods_name, join_date')
-        print ret, ret == ret1
-
-    @WithDatabase('test')
-    def test_delete(self):
-        print self.db.delete(table='test', where={'create_time': ('>=', datetime.datetime.now()),
-                                                  'or': {'goods_name': '测试'}})
-        print self.db.delete(table='test', where={'id': ('between', (1,4))})
-        print self.db.delete(table='test', where={'id': 5})
-        print self.db.delete(table='test', where=None)
-        print self.db.delete(table='test1', where=None)
-
-    @WithDatabase(('test', 'test1'))
-    def test_select(self):
-        where = None
-        ret = self.db['test'].select(table='`test`', where=where, fields='count(*) c')
-        ret1 = self.db['test1'].select(table='`test`', where=where, fields='count(*) c')
-        print ret, ret == ret1
-
-        where = {'goods_name': '测试', 'create_time': datetime.datetime.now()}
-        ret = self.db['test'].select(table='`test`', where=where, fields='goods_name, create_time')
-        ret1 = self.db['test1'].select(table='`test`', where=where, fields='goods_name, create_time')
-        print ret, ret == ret1
-
-        where = {'goods_name': '测试', 
-                 'create_time': ('between', (datetime.datetime.now()+datetime.timedelta(seconds=-10), datetime.datetime.now())), 
-                 'total_amt': 1, 'fee': 1}
-        ret = self.db['test'].select(table='`test`', where=where, fields='goods_name, create_time')
-        ret1 = self.db['test1'].select(table='`test`', where=where, fields='goods_name, create_time')
-        print ret, ret == ret1
-
-        where = {'goods_name': '测试', 'total_amt': 1, 'OR': {'fee': 1, 'create_time': datetime.datetime.now()}}
-        ret = self.db['test'].select(table='`test`', where=where, fields='goods_name, create_time')
-        ret1 = self.db['test1'].select(table='`test`', where=where, fields='goods_name, create_time')
-        print ret, ret == ret1
-
-        where = {'goods_name': '测试', 
-                 'join_date': datetime.date.today(), 'fee': 1, 
-                 'total_amt': ('in', (1,2,3,4,5,6,7,10))}
-        ret = self.db['test'].select(table='`test`', where=where, fields='goods_name, join_date')
-        ret1 = self.db['test1'].select(table='`test`', where=where, fields='goods_name, join_date')
-        print ret, ret == ret1
-
-    @WithDatabase('test')
-    def test_update(self):
-        print self.db.update(table='test', where={'id': 1}, values={'goods_name': 'update 测试'})
-        print self.db.update(table='test', 
-                             where={'goods_name': ('in', ('insert 测试', 'update 测试'))}, 
-                             values={'goods_name': 'update 测试'})
-        print self.db.update(table='test', where={'fee': 0.75, 'or': {'total_amt': 1}}, 
-                                           values={'total_amt': 100, 'goods_name': 'total_amt 测试'})
-        print self.db.update(table='test', where={'goods_name': ('!=', '')}, values={'goods_name': '测试'})
-
-    @WithDatabase('test')
-    def test_insert(self):
-        values = {'goods_name': '测试', 'join_date': datetime.date.today(), 'create_time': datetime.datetime.now()} 
-        values['total_amt'] = 12
-        values['fee'] = 1
-        self.db.insert(table='test', values=values)
-        values['total_amt'] = 1
-        values['fee'] = 5
-        self.db.insert(table='test', values=values)
-        values['goods_name'] = 'insert 测试'
-        self.db.insert(table='test', values=values)
-        values['create_time'] = datetime.datetime.now()-datetime.timedelta(seconds=60)
-        values['goods_name'] = '测试'
-        self.db.insert(table='test', values=values)
-        values['fee'] = 0.75
-        self.db.insert(table='test', values=values)
-
-        values = {'goods_name': '测试', 'join_date': datetime.date.today(), 'create_time': datetime.datetime.now()} 
-        values['total_amt'] = 12
-        values['fee'] = 1
-        print self.db.insert(table='test1', values=values)
-        values['total_amt'] = 1
-        values['fee'] = 5
-        print self.db.insert(table='test1', values=values)
-        print self.db.insert(table='test1', values=values)
-        values['create_time'] = datetime.datetime.now()-datetime.timedelta(seconds=60)
-        print self.db.insert(table='test1', values=values)
-        values['fee'] = 0.75
-        self.db.insert(table='test1', values=values)
-
-    @WithDatabase('test')
-    def test_get(self):
-        sql = 'select * from test where id=1' 
-        print self.db.get(sql)
-        sql = 'select * from test where id in(%s, %s, %s)'
-        print self.db.get(sql, (1,2,3))
-        sql = 'select * from test where create_time=%s'
-        print self.db.get(sql, datetime.datetime.now())
-
-    @WithDatabase('test')
-    def test_query(self):
-        sql = 'select * from test where id in (1,8,9)'
-        print self.db.query(sql)
-        sql = 'select * from test where id in (%s, %s, %s)'
-        print self.db.query(sql, args=(1, 8, 9))
-
-    @WithDatabase('test')
-    def test_select_join(self):
-        wheres = ({'goods_name': '测试'}, {'goods_name': '测试', 'total_amt': 1}) 
-        relation = {'goods_name': 'goods_name', 'OR': {'fee': 'fee'}}
-        print self.db.select_left_join(tables=('test', 'test1'), wheres=wheres, relation=relation)
-        print self.db.select_left_join(tables=('test1', 'test'), wheres=wheres, relation=relation)
-        print self.db.select_right_join(tables=('test1', 'test'), wheres=wheres, relation=relation)
-
-dbconfig = {'test': 
-                      {'master': 
-                                {'db': 'test',
-                                'host': '172.100.101.106',
-                                'port': 3306,
-                                'user': 'qf',
-                                'passwd': '123456',
-                                'charset': 'utf8',
-                                'timeout': 10}, 
-                        'conn': 1,
-                        'slave': 
-                                {'db': 'test',
-                                'host': '172.100.101.106',
-                                'port': 3306,
-                                'user': 'qf',
-                                'passwd': '123456',
-                                'charset': 'utf8',
-                                'timeout': 10}},
-            'test1': 
-                      {'master': 
-                                {'db': 'test',
-                                'host': '172.100.101.106',
-                                'port': 3306,
-                                'user': 'qf',
-                                'passwd': '123456',
-                                'charset': 'utf8',
-                                'timeout': 10}, 
-                        'conn': 1,
-                        'slave': 
-                                {'db': 'test',
-                                'host': '172.100.101.106',
-                                'port': 3306,
-                                'user': 'qf',
-                                'passwd': '123456',
-                                'charset': 'utf8',
-                                'timeout': 10}}
-
-            }
-
-install_database(dbconfig)
-
-if __name__ == '__main__':
-    t = Test() 
-    t.test_insert()
-    t.test_select()
-    t.test_select_one()
-    t.test_select_join()
-    #t.test_delete()
-    t.test_get()
-    t.test_query()
-    t.test_update()
-    t.test_delete()
