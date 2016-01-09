@@ -9,7 +9,6 @@ size_t BKDRHash(const char *str)
     size_t v = 0 ;
     while(*str != '\0')
         v = (v << 5) - v + *str++ ;
-
     return v ;
 }
 
