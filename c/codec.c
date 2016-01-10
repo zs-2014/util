@@ -1,4 +1,3 @@
-#include <stdio.h>
 
 /*
  * 1.unicode不是一种编码格式，而是一个编码规范。
@@ -6,7 +5,6 @@
  * 3.unicode能提供0xFFFF+1个字符，刚好是2个字节所能表示的范围，
  *   所以我们常说unicode占两个字节。其实这是不对的，不存在unicode
  *   这种编码格式，这种格式都不存在，谈何占空间啊。
- * 4.我们常说的unicode编码，其实应该是utf-16这种编码格式。
  */
 
 /*
@@ -34,6 +32,7 @@
 
 
 #define be_to_le(n) (((n) >> 8)&0xFF)|(((n)&0xFF)<<8)
+#define le_to_be(n) be_to_le(n)
 
 int codep_to_utf8(unsigned int code_point, unsigned char *utf8_str)
 {
@@ -95,7 +94,7 @@ void *utf16_to_utf8(const void *src,
                     int is_be)
 {
     if(!src|| !dst)
-        return NULL;
+        return dst;
     unsigned char *utf8_str = (unsigned char *)dst;
     unsigned int _from_len = 0;
     if(!from_len)
@@ -129,7 +128,7 @@ void *utf16_to_utf8(const void *src,
         else
         {
             //将此code point 转换成utf8
-            int ret = codep_to_utf8(codep1, utf8_str+ *to_len);    
+            int ret = codep_to_utf8(codep1, utf8_str+*to_len);    
             if(ret > 0)
                 *to_len += ret;
             else
@@ -138,18 +137,157 @@ void *utf16_to_utf8(const void *src,
         *from_len += 2;
         beg++;
     }
-    return utf8_str;
+    return dst;
+}
+
+void *utf8_to_utf16(const void *src,
+                    unsigned int total_len,
+                    unsigned int *from_len,
+                    void *dst,
+                    unsigned int *to_len,
+                    int is_to_be)
+{
+    if(!src || !dst)
+        return dst;
+    unsigned int _from_len = 0;
+    if(!from_len)
+        from_len = &_from_len;
+    *from_len = 0;
+
+    unsigned int _to_len = 0;
+    if(!to_len)
+        to_len = &_to_len;
+    *to_len = 0;
+
+    unsigned char *utf8_str = (unsigned char *)src;
+    unsigned short *utf16_str = (unsigned short*)dst;
+    unsigned char masks[] = {0x7F, 0x1F, 0x0F, 0x0E};
+    while(*from_len < total_len)
+    {
+        int cnt = 0;
+        unsigned char n = *utf8_str;
+        while(n&0x80)
+        {
+            n = n << 1;
+            cnt++;
+        }
+        if(cnt == 0)
+            cnt = 1;
+        if(*from_len + cnt > total_len)
+            break;
+        if(cnt > sizeof(masks)/sizeof(masks[0]))
+            break;
+        unsigned char mask = masks[cnt-1];
+        unsigned codep = utf8_str[0]&mask;
+        int i=1;
+        for(i=1; i<cnt; i++)
+            codep = (codep<<6)|(utf8_str[i]&0x3F);
+        //保留字符区间
+        if(codep >= 0xD800 && codep <= 0xFFFF)
+            break;
+        //[0x0000, 0xD800)区间
+        if(codep < 0x10000)
+        {
+            *utf16_str++ = is_to_be?(((codep>>8)&0xFF)|(codep&0xFF)<<8):codep;
+            *to_len +=2;
+        }
+        //[0x10000, 0x10FFFF)区间
+        else
+        {
+            codep = codep - 0x10000; 
+            unsigned h = 0xD800|((codep>>10)&0x3F);
+            unsigned l = 0xDC00|(codep&0x3F);
+            *utf16_str++ = is_to_be?le_to_be(h):h;
+            *utf16_str++ = is_to_be?le_to_be(l):l;
+            *to_len +=4;
+        }
+        *from_len += cnt;
+        utf8_str += cnt ;
+    }
+    return dst;
+}
+
+#ifdef TEST
+#include <stdio.h>
+#include <string.h>
+int get_utf16_length(const void *src)
+{
+    const unsigned short *beg = (const unsigned short*)src;
+    int l = 0;
+    while(*beg++ != 0)
+        l+=2;
+    return l;
+}
+
+void print_utf16_string(const char *src, int len)
+{
+   int i = 0;
+   const char *hex_str = "0123456789ABCDEF";
+   for(i=0; i < len; i+=2)
+   {
+        printf("\\u%c%c%c%c", hex_str[(src[i+1]>>4)&0x0F], hex_str[src[i+1]&0x0F], 
+                               hex_str[(src[i]>>4)&0x0F], hex_str[src[i]&0x0F]);
+   }
+   printf("\n");
+}
+
+void test_utf8_to_utf16()
+{
+    char dst_buff[1024] = {0}; 
+    char *src = "这是一个合法的utf8字符串";
+    unsigned int to_len = 0;
+    unsigned from_len = 0;
+    unsigned total_len = strlen(src);
+    //小端法
+    utf8_to_utf16(src, total_len, &from_len, dst_buff, &to_len, 0);
+    print_utf16_string(dst_buff, to_len);
+    printf("total_len=%d from_len=%d to_len=%d\n", total_len, from_len, to_len);
+    //大端法
+    memset(dst_buff, 0, sizeof(dst_buff));
+    utf8_to_utf16(src, total_len, &from_len, dst_buff, &to_len, 1);
+    print_utf16_string(dst_buff, to_len);
+    printf("total_len=%d from_len=%d to_len=%d\n", total_len, from_len, to_len);
+
+    src = "这是一个包含了笑脸的utf-8字符串😂l";
+    total_len = strlen(src);
+    memset(dst_buff, 0, sizeof(dst_buff));
+    utf8_to_utf16(src, total_len, &from_len, dst_buff, &to_len, 0);
+    print_utf16_string(dst_buff, to_len);
+    printf("total_len=%d from_len=%d to_len=%d\n", total_len, from_len, to_len);
+    
+    //错误的utf-8串
+    src = "\xff\xe8\xbf\x99\xe6\x98\xaf\xe4\xb8\xaa\xe9\x94\x99\xe8\xaf\xaf\xe7\x9a\x84\xe5\xad\x97\xe7\xac\xa6";
+    total_len = strlen(src);
+    memset(dst_buff, 0, sizeof(dst_buff));
+    utf8_to_utf16(src, total_len, &from_len, dst_buff, &to_len, 0);
+    print_utf16_string(dst_buff, to_len);
+    printf("total_len=%d from_len=%d to_len=%d\n", total_len, from_len, to_len);
+
+    //空utf-8串
+    src = "";
+    total_len = strlen(src);
+    memset(dst_buff, 0, sizeof(dst_buff));
+    utf8_to_utf16(src, total_len, &from_len, dst_buff, &to_len, 0);
+    print_utf16_string(dst_buff, to_len);
+    printf("total_len=%d from_len=%d to_len=%d\n", total_len, from_len, to_len);
 }
 
 
-int main(int argc, char *argv[])
+void test_utf16_to_utf8()
 {
     char dst_buff[1024] = {0};   
     char *src = "\xd9\x8f\x2f\x66\x00\x4e\x2a\x4e\x4b\x6d\xd5\x8b\x22\x25\x26\x25\x3d\xd8\x02\xde";
-    char *src1 = "\x8f\xd9\x66\x2f\x4e\x00\x4e\x2a\x6d\x4b\x8b\xd5\xd8\x3d\xde\x02";
+    char *src1 = "\x8f\xd9\x66\x2f\x4e\x00\x4e\x2a\x6d\x4b\x8b\xd5\xd8\x3d\xde\x02\x00\x00";
     unsigned int to_len = 0;
     unsigned int from_len = 0;
-    utf16_to_utf8(src1, 20, &from_len, dst_buff, &to_len, 1);
+    utf16_to_utf8(src1, get_utf16_length(src1), &from_len, dst_buff, &to_len, 1);
     printf("to_len = %d\nfrom_len=%d\ndst_buff=%s\n", to_len, from_len, dst_buff);
+}
+
+int main(int argc, char *argv[])
+{
+    test_utf8_to_utf16();
+    test_utf16_to_utf8();
     return 0;
 }
+#endif
