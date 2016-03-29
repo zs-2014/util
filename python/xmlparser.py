@@ -224,7 +224,7 @@ if __name__ == '__main__':
     <sign>51ac015aee25df861df07f59c0fbff82</sign>
     <sign_type>MD5</sign_type>
 </alipay>'''
-    print XmlDict(a).to_dict()
-    #test_xmltodict(a)
-    #test_xmlparser(a)
+    #print XmlDict(a).to_dict()
+    test_xmltodict(a)
+    test_xmlparser(a)
 

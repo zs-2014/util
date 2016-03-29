@@ -1,4 +1,5 @@
 #coding: utf-8
+
 import os, sys
 import logging
 import util
@@ -80,8 +81,10 @@ class Msg(object):
             return -1
         else:
             return 1
+
     def __str__(self):
         return '[notify_id=%s cnt=%d next_notify_tm=%d]' % (self.notify_id, self.cnt, self.next_notify_tm/1000)
+
     def __repr__(self):
         return str(self)
 
